@@ -1,0 +1,30 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+numpy = "*"
+pydantic = "*"
+matplotlib = "*"
+project = {file = ".", editable = true}
+scipy = "*"
+types-setuptools = "*"
+pygame = "*"
+
+[dev-packages]
+setuptools = "*"
+black = "*"
+colorama = "*"
+coverage = "*"
+flake8 = "*"
+isort = "*"
+mypy = "*"
+pylint = "*"
+pytest = "*"
+pytest-cov = "*"
+
+[requires]
+python_version = "3.13"
+
+[scripts]
