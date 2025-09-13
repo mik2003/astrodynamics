@@ -10,10 +10,10 @@ from pydantic import BaseModel, ValidationError, field_validator
 from project.utilities import camel_to_snake
 
 T = TypeVar("T", bound="Body")
-Vector = npt.NDArray[np.float64]
+A = npt.NDArray[np.float64]
 
 
-class Vector3D(np.ndarray):
+class Vector3(np.ndarray):
     @staticmethod
     def __new__(cls, input_array):
         arr = np.asarray(input_array, dtype=float).reshape(3, 1)
@@ -27,12 +27,12 @@ class Body(BaseModel):
     name: str | None = None
     mu: float | None = None
 
-    r_0: Vector3D | None = None
-    v_0: Vector3D | None = None
+    r_0: Vector3 | None = None
+    v_0: Vector3 | None = None
 
-    r: List[Vector3D] = []
-    v: List[Vector3D] = []
-    a: List[Vector3D] = []
+    r: List[Vector3] = []
+    v: List[Vector3] = []
+    a: List[Vector3] = []
 
     model_config = dict(arbitrary_types_allowed=True)
 
@@ -40,7 +40,7 @@ class Body(BaseModel):
     def validate_vector(cls, v):  # pylint: disable=no-self-argument
         if not isinstance(v, (list, tuple)) or len(v) != 3:
             raise ValueError("Vector must be a list of 3 elements")
-        return Vector3D(v)
+        return Vector3(v)
 
     @classmethod
     def load(cls, body: Dict[str, Any]) -> "Body":
@@ -52,8 +52,21 @@ class Body(BaseModel):
             raise
 
     def dump(self) -> Dict[str, Any]:
-        """Dump mission phase."""
-        return self.model_dump()
+        """Dump body"""
+        # Convert to dict first
+        body_dict = self.model_dump()
+
+        # Convert Vector3 arrays to lists
+        for key in ["r_0", "v_0"]:
+            if key in body_dict and body_dict[key] is not None:
+                body_dict[key] = body_dict[key].tolist()
+
+        # Convert lists of Vector3 to lists of lists
+        for key in ["r", "v", "a"]:
+            if key in body_dict and body_dict[key] is not None:
+                body_dict[key] = [vec.tolist() for vec in body_dict[key]]
+
+        return body_dict
 
 
 class BodyList(list[Body]):
@@ -62,8 +75,8 @@ class BodyList(list[Body]):
     def __init__(self, value) -> None:
         super().__init__(value)
 
-        self._r_0: Vector | None = None
-        self._v_0: Vector | None = None
+        self._r_0: A | None = None
+        self._v_0: A | None = None
 
     @staticmethod
     def load(file_path: Path) -> "BodyList":
@@ -78,12 +91,31 @@ class BodyList(list[Body]):
             raise
 
     def dump(self, file_path: Path) -> None:
-        """Dump mission profile to file."""
+        """Dump body list to file."""
 
         # Use lowercase class name as key
         key = camel_to_snake(self.__class__.__name__)
 
-        save_data = [body.dump() for body in self]
+        save_data = []
+        for body in self:
+            body_data = body.dump()  # This already converts arrays to lists
+
+            # Additional processing if needed for any remaining numpy arrays
+            for body_key, value in body_data.items():
+                if hasattr(value, "tolist"):  # Check if it's a numpy array
+                    body_data[body_key] = value.tolist()
+                elif (
+                    isinstance(value, list)
+                    and value
+                    and hasattr(value[0], "tolist")
+                ):
+                    # Handle lists of numpy arrays
+                    body_data[body_key] = [
+                        v.tolist() if hasattr(v, "tolist") else v
+                        for v in value
+                    ]
+
+            save_data.append(body_data)
 
         if not os.path.exists(file_path):
             data = {key: save_data}
@@ -97,59 +129,61 @@ class BodyList(list[Body]):
             json.dump(data, f, indent=4)
 
     @property
-    def r_0(self) -> Vector:
+    def r_0(self) -> A:
         if self._r_0 is None:
             self._r_0 = np.hstack([body.r_0 for body in self])
         return self._r_0
 
     @r_0.setter
-    def r_0(self, value: Vector) -> None:
+    def r_0(self, value: A) -> None:
         self._r_0 = value
 
     @property
-    def v_0(self) -> Vector:
+    def v_0(self) -> A:
         if self._v_0 is None:
             self._v_0 = np.hstack([body.v_0 for body in self])
         return self._v_0
 
     @v_0.setter
-    def v_0(self, value: Vector) -> None:
+    def v_0(self, value: A) -> None:
         self._v_0 = value
 
-    def a(self, r: Vector) -> Vector:
+    def a(self, r: A) -> A:
         """
-        Compute accelerations for all bodies at given positions r_vec.
-        r_vec is shaped (3*N, 1), stacking all positions.
-        Returns accelerations in the same stacked shape.
+        Compute accelerations for all bodies at given positions r.
+        r is shaped (3, N), with each column representing a body's position.
+        Returns accelerations in the same shape (3, N).
         """
-        a_list = []
+        n_bodies = r.shape[1]
+        a_mat = np.zeros_like(r)
 
-        for i, _ in enumerate(self):
-            # extract position of body i from the stacked vector
-            r_i = r[3 * i : 3 * (i + 1), :]
+        for i in range(n_bodies):
+            r_i = r[:, i : i + 1]  # Keep as (3, 1) for broadcasting
             a_i = np.zeros((3, 1))
 
-            for j, body_j in enumerate(self):
-                if i == j or body_j.mu is None:
+            for j in range(n_bodies):
+                if i == j or self[j].mu is None:
                     continue
 
-                r_j = r[3 * j : 3 * (j + 1), :]
+                r_j = r[:, j : j + 1]  # Keep as (3, 1) for broadcasting
                 r_ij = r_j - r_i
                 dist = np.linalg.norm(r_ij)
 
                 if dist == 0:  # avoid division by zero
                     continue
 
-                a_i += body_j.mu * r_ij / dist**3
+                a_i += self[j].mu * r_ij / dist**3
 
-            a_list.append(a_i)
+            a_mat[:, i : i + 1] = a_i
 
-        return np.concatenate(a_list, axis=0)
+        return a_mat
 
     def perform_step(self, h: float) -> None:
+        # Store current positions and velocities for each body
         for i, body in enumerate(self):
-            body.r.append(self.r_0[3 * i : 3 * i + 3])
-            body.v.append(self.v_0[3 * i : 3 * i + 3])
+            # Append current state to history lists
+            body.r.append(Vector3(self.r_0[:, i]))
+            body.v.append(Vector3(self.v_0[:, i]))
 
         k_r1 = self.v_0
         k_v1 = self.a(self.r_0)
