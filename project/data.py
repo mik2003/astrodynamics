@@ -7,10 +7,9 @@ import numpy as np
 import numpy.typing as npt
 from pydantic import BaseModel, ValidationError, field_validator
 
-from project.utilities import camel_to_snake
+from project.utilities import A, camel_to_snake
 
 T = TypeVar("T", bound="Body")
-A = npt.NDArray[np.float64]
 
 
 class Vector3(np.ndarray):
@@ -29,10 +28,6 @@ class Body(BaseModel):
 
     r_0: Vector3 | None = None
     v_0: Vector3 | None = None
-
-    r: List[Vector3] = []
-    v: List[Vector3] = []
-    a: List[Vector3] = []
 
     model_config = dict(arbitrary_types_allowed=True)
 
@@ -60,11 +55,6 @@ class Body(BaseModel):
         for key in ["r_0", "v_0"]:
             if key in body_dict and body_dict[key] is not None:
                 body_dict[key] = body_dict[key].tolist()
-
-        # Convert lists of Vector3 to lists of lists
-        for key in ["r", "v", "a"]:
-            if key in body_dict and body_dict[key] is not None:
-                body_dict[key] = [vec.tolist() for vec in body_dict[key]]
 
         return body_dict
 
@@ -147,55 +137,3 @@ class BodyList(list[Body]):
     @v_0.setter
     def v_0(self, value: A) -> None:
         self._v_0 = value
-
-    def a(self, r: A) -> A:
-        """
-        Compute accelerations for all bodies at given positions r.
-        r is shaped (3, N), with each column representing a body's position.
-        Returns accelerations in the same shape (3, N).
-        """
-        n_bodies = r.shape[1]
-        a_mat = np.zeros_like(r)
-
-        for i in range(n_bodies):
-            r_i = r[:, i : i + 1]  # Keep as (3, 1) for broadcasting
-            a_i = np.zeros((3, 1))
-
-            for j in range(n_bodies):
-                if i == j or self[j].mu is None:
-                    continue
-
-                r_j = r[:, j : j + 1]  # Keep as (3, 1) for broadcasting
-                r_ij = r_j - r_i
-                dist = np.linalg.norm(r_ij)
-
-                if dist == 0:  # avoid division by zero
-                    continue
-
-                a_i += self[j].mu * r_ij / dist**3
-
-            a_mat[:, i : i + 1] = a_i
-
-        return a_mat
-
-    def perform_step(self, h: float) -> None:
-        # Store current positions and velocities for each body
-        for i, body in enumerate(self):
-            # Append current state to history lists
-            body.r.append(Vector3(self.r_0[:, i]))
-            body.v.append(Vector3(self.v_0[:, i]))
-
-        k_r1 = self.v_0
-        k_v1 = self.a(self.r_0)
-
-        k_r2 = self.v_0 + k_v1 * h / 2
-        k_v2 = self.a(self.r_0 + k_r1 * h / 2)
-
-        k_r3 = self.v_0 + k_v2 * h / 2
-        k_v3 = self.a(self.r_0 + k_r2 * h / 2)
-
-        k_r4 = self.v_0 + k_v3 * h
-        k_v4 = self.a(self.r_0 + k_r3 * h)
-
-        self.r_0 = self.r_0 + h / 6 * (k_r1 + 2 * k_r2 + 2 * k_r3 + k_r4)
-        self.v_0 = self.v_0 + h / 6 * (k_v1 + 2 * k_v2 + 2 * k_v3 + k_v4)
