@@ -38,7 +38,7 @@ COLORS = [(255, 215, 0), (0, 191, 255), (220, 20, 60), (34, 139, 34)]
 
 
 trail_step_time = 3600 * 24  # [s]
-trail_time = 3600 * 24 * 365.25  # [s]
+trail_time = 3600 * 24 * 365.25 * 10  # [s]
 TRAIL_STEP = int(trail_step_time / dt)  # Step between trail points
 TRAIL_LENGTH = int(
     trail_time / trail_step_time
@@ -225,7 +225,7 @@ while running:
             if event.key == pygame.K_r:
                 frame = 0
                 cache_needs_update = True
-        elif event.type == pygame.MOUSEBUTTONDOWN:
+        elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             mouse_x, mouse_y = event.pos
             positions = mm[frame]
             for i in range(num_bodies):
