@@ -1,4 +1,5 @@
 import os
+import time
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -9,8 +10,8 @@ from project.utilities import Dir
 
 # Simulation parameters
 dt = 3600  # simulation time step (seconds)
-time = 3600 * 24 * 365.25  # simulation time (seconds)
-steps = int(time / dt)  # total number of simulation steps
+time_total = 3600 * 24 * 365.25 * 100  # simulation time (seconds)
+steps = int(time_total / dt)  # total number of simulation steps
 
 fname = "full_solar_system_with_dwarf_planets"
 file_in = Dir.data_dir.joinpath(fname + ".json")
@@ -19,7 +20,7 @@ file_traj = Dir.data_dir.joinpath(f"{fname}_{dt}_{steps}.bin")
 # Run simulation first and save trajectory with progress tracker
 body_list = BodyList.load(file_in)
 if not os.path.exists(file_traj):
-    print(f"Simulating {time:.2e} seconds...")
+    print(f"Simulating {time_total:.2e} seconds...")
     simulate_n_steps(body_list, steps, dt, file_traj, prnt=True)
     print("\nSimulation complete.")
 
@@ -41,15 +42,14 @@ mu = np.array(mu_list)
 G = 6.67430e-11
 
 
-def calculate_energy_vectorized(r, v, mu):
+def calculate_energy(r, v, mu):
     """
-    Calculate energy using vectorized operations
+    Calculate total energy using vectorized operations
     mu: array of gravitational parameters [m^3/s^2]
     """
     n_steps, _, n_bodies = r.shape
 
     # Calculate kinetic energy: E_kin = 0.5 * sum((mu_i/G) * v_i^2)
-    # Vectorized over all bodies and time steps
     v_sq = np.sum(v**2, axis=1)  # shape: (n_steps, n_bodies)
     masses = mu / G  # shape: (n_bodies,)
     e_kin = 0.5 * np.sum(v_sq * masses, axis=1)  # shape: (n_steps,)
@@ -59,55 +59,62 @@ def calculate_energy_vectorized(r, v, mu):
 
     # Create indices for all unique pairs
     i_idx, j_idx = np.triu_indices(n_bodies, k=1)
-
-    for t in range(n_steps):
-        # Vectorized distance calculation for all pairs at time t
-        r_diff = r[t, :, i_idx] - r[t, :, j_idx]  # shape: (3, n_pairs)
-        distances = np.sqrt(np.sum(r_diff**2, axis=0))  # shape: (n_pairs,)
-
-        # Vectorized potential energy calculation for all pairs
-        mu_pairs = mu[i_idx] * mu[j_idx]  # shape: (n_pairs,)
-        e_pot[t] = -np.sum(mu_pairs / (G * distances))
-
-    return e_kin + e_pot
-
-
-def calculate_energy_fully_vectorized(r, v, mu):
-    """
-    Fully vectorized version (memory intensive for large n_bodies)
-    """
-    n_steps, _, n_bodies = r.shape
-
-    # Kinetic energy (same as above)
-    v_sq = np.sum(v**2, axis=1)
-    masses = mu / G
-    e_kin = 0.5 * np.sum(v_sq * masses, axis=1)
-
-    # Potential energy - fully vectorized across time
-    i_idx, j_idx = np.triu_indices(n_bodies, k=1)
     n_pairs = len(i_idx)
 
-    # Calculate all pairwise differences for all time steps
-    # This creates a large array: (n_steps, 3, n_pairs)
-    r_diff = r[:, :, i_idx] - r[:, :, j_idx]
+    start_time = time.time()
+    print("Calculating energy...")
 
-    # Calculate distances for all pairs and all time steps
-    distances = np.sqrt(np.sum(r_diff**2, axis=1))  # shape: (n_steps, n_pairs)
+    for t in range(n_steps):
+        if t % 100 == 0:
+            progress = int(t / n_steps * 50)
+            bar = "[" + "#" * progress + "-" * (50 - progress) + "]"
+            elapsed = time.time() - start_time
+            if t > 0:
+                est_total = elapsed / (t / n_steps)
+                est_remain = est_total - elapsed
+                hrs = int(est_remain // 3600)
+                mins = int((est_remain % 3600) // 60)
+                secs = int(est_remain % 60)
+                est_str = f" | ETA: {hrs:02d}:{mins:02d}:{secs:02d}"
+            else:
+                est_str = ""
+            print(f"\rProgress {bar} {t/n_steps*100:.2f}%{est_str}", end="")
 
-    # Calculate potential energy for all pairs
-    mu_pairs = mu[i_idx] * mu[j_idx]  # shape: (n_pairs,)
-    e_pot = -np.sum(
-        mu_pairs[None, :] / (G * distances), axis=1
-    )  # shape: (n_steps,)
+        # Extract positions and transpose to get (3, n_pairs) shape
+        r_i = r[
+            t, :, i_idx
+        ].T  # shape: (n_pairs, 3) -> transpose to (3, n_pairs)
+        r_j = r[
+            t, :, j_idx
+        ].T  # shape: (n_pairs, 3) -> transpose to (3, n_pairs)
+
+        r_diff = r_i - r_j  # shape: (3, n_pairs)
+
+        # Calculate distances (norm along axis 0)
+        distances = np.linalg.norm(r_diff, axis=0)  # shape: (n_pairs,)
+
+        # Calculate potential energy terms
+        mu_pairs = mu[i_idx] * mu[j_idx]  # shape: (n_pairs,)
+
+        # Calculate potential energy (avoid division by zero)
+        with np.errstate(divide="ignore", invalid="ignore"):
+            potential_terms = mu_pairs / (G * distances)
+            potential_terms = np.nan_to_num(
+                potential_terms, nan=0.0, posinf=0.0, neginf=0.0
+            )
+
+        e_pot[t] = -np.sum(potential_terms)
+
+    print(
+        "\rProgress [" + "#" * 50 + "] 100.00% | ETA: 00:00:00"
+    )  # Show full bar at the end
+    print("Energy calculation complete.")
 
     return e_kin + e_pot
 
 
-# Use the appropriate version based on your memory constraints
-if num_bodies <= 10:  # Use fully vectorized for small number of bodies
-    e_total = calculate_energy_fully_vectorized(r, v, mu)
-else:  # Use semi-vectorized for larger number of bodies
-    e_total = calculate_energy_vectorized(r, v, mu)
+# Calculate energy with progress bar
+e_total = calculate_energy(r, v, mu)
 
 # Optimized angular momentum calculation
 # r shape: (steps, 3, num_bodies), v shape: (steps, 3, num_bodies)
@@ -122,7 +129,7 @@ h = np.sum(np.cross(r, v_weighted, axis=1), axis=2)  # shape: (steps, 3)
 h_0 = h[0, 2]
 
 # Plotting
-t = np.arange(0, time, dt) / 3600 / 24
+t = np.arange(0, time_total, dt) / 3600 / 24
 
 plt.figure(figsize=(12, 8))
 
