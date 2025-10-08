@@ -10,10 +10,9 @@ from project.utilities import A, Dir, load_trails_npy
 
 # Simulation parameters
 dt = 3600  # simulation time step (seconds)
-time = 3600 * 24 * 365.25 * 10  # simulation time (seconds)
+time = 3600 * 24 * 365.25 * 100  # simulation time (seconds)
 steps = int(time / dt)  # total number of simulation steps
 
-fname = "sun_earth"
 fname = "sun_earth"
 file_in = Dir.data_dir.joinpath(fname + ".json")
 file_traj = Dir.data_dir.joinpath(f"{fname}_{dt}_{steps}.bin")
@@ -34,8 +33,6 @@ mm = np.memmap(
     shape=(steps, 9, num_bodies),
 )
 
-print(mm.shape)
-
 r = mm[:, 0:3, :]
 v = mm[:, 3:6, :]
 a = mm[:, 6:9, :]
@@ -43,8 +40,19 @@ a = mm[:, 6:9, :]
 h = np.sum(np.cross(r, v, axis=1), axis=2)
 h_0 = h[0, 2]
 
-plt.plot(np.arange(0, time, dt) / 3600 / 24, (h[:, 2] - h_0) / h_0 * 100)
-plt.title("Percentage Change in Specific Angular Momentum h")
+v_square = np.sum(np.square(v), axis=1)
+e_k = np.sum(v_square / 2, axis=1)
+mu = 0
+for body in body_list:
+    mu += body.mu
+e_p = -mu / np.sqrt(np.sum(np.square(np.sum(r, axis=1)), axis=1))
+e = e_k + e_p
+
+t = np.arange(0, time, dt) / 3600 / 24
+plt.plot(t, (h[:, 2] - h_0) / h_0 * 100, label="Specific angular momentum h")
+plt.plot(t, (e - e[0]) / e[0] * 100, label="Orbital energy E")
+plt.title("Change in the integrals of orbital motion")
 plt.xlabel("Time [day]")
 plt.ylabel("Change [%]")
+plt.legend()
 plt.show()
