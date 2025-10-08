@@ -13,7 +13,7 @@ dt = 3600  # simulation time step (seconds)
 time = 3600 * 24 * 365.25  # simulation time (seconds)
 steps = int(time / dt)  # total number of simulation steps
 
-fname = "test"
+fname = "full_solar_system_with_dwarf_planets"
 file_in = Dir.data_dir.joinpath(fname + ".json")
 file_traj = Dir.data_dir.joinpath(f"{fname}_{dt}_{steps}.bin")
 
