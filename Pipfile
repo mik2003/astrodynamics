@@ -11,6 +11,7 @@ project = {file = ".", editable = true}
 scipy = "*"
 types-setuptools = "*"
 pygame = "*"
+requests = "*"
 
 [dev-packages]
 setuptools = "*"

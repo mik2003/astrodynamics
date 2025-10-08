@@ -10,10 +10,10 @@ from project.utilities import A, Dir, load_trails_npy
 
 # Simulation parameters
 dt = 3600  # simulation time step (seconds)
-time = 3600 * 24 * 365.25 * 100  # simulation time (seconds)
+time = 3600 * 24 * 365.25  # simulation time (seconds)
 steps = int(time / dt)  # total number of simulation steps
 
-fname = "sun_earth"
+fname = "test"
 file_in = Dir.data_dir.joinpath(fname + ".json")
 file_traj = Dir.data_dir.joinpath(f"{fname}_{dt}_{steps}.bin")
 
