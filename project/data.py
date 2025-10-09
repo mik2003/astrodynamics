@@ -64,6 +64,7 @@ class BodyList(list[Body]):
 
     def __init__(self, value) -> None:
         super().__init__(value)
+        self.metadata: Dict[str, str] | None = None
 
         self._r_0: A | None = None
         self._v_0: A | None = None
@@ -75,7 +76,9 @@ class BodyList(list[Body]):
             data = json.load(f)
         try:
             bl_raw = data["body_list"]
-            return BodyList([Body.load(body) for body in bl_raw])
+            bl = BodyList([Body.load(body) for body in bl_raw])
+            bl.metadata = data["metadata"]
+            return bl
         except ValidationError as e:
             print(e.errors())
             raise

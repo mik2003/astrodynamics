@@ -1,5 +1,6 @@
 import os
 import sys
+from datetime import datetime, timedelta
 
 import numpy as np
 import pygame
@@ -10,7 +11,7 @@ from project.utilities import A, Dir, load_trails_npy
 
 # Simulation parameters
 dt = 3600  # simulation time step (seconds)
-time = 3600 * 24 * 365.25  # simulation time (seconds)
+time = 3600 * 24 * 365.25 * 100  # simulation time (seconds)
 steps = int(time / dt)  # total number of simulation steps
 
 fname = "full_solar_system_with_dwarf_planets"
@@ -23,6 +24,9 @@ if not os.path.exists(file_traj):
     print(f"Simulating {time:.2e} seconds...")
     simulate_n_steps(body_list, steps, dt, file_traj, prnt=True)
     print("\nSimulation complete.")
+
+body_list = BodyList.load(file_in)
+epoch_str = body_list.metadata["epoch"]
 
 # Visualization
 pygame.init()
@@ -107,8 +111,8 @@ trail_cache_focus = None  # Last focus used for cache
 trail_cache_frame = 0  # Last frame used for cache
 cache_needs_update = False
 
-font = pygame.font.SysFont(None, 36)
-small_font = pygame.font.SysFont(None, 24)
+font = pygame.font.SysFont("Courier New", 24)
+small_font = pygame.font.SysFont("Courier New", 16)
 
 mm = np.memmap(
     file_traj,
@@ -295,22 +299,13 @@ while running:
 
     # Draw timer and simulation info
     t = frame * dt
-    days = t / (24 * 3600)
-    hours = (days - int(days)) * 24
-    # Show years if days exceed one sidereal year (365.25 days)
-    if days >= 365.25:
-        years = int(days // 365.25)
-        rem_days = days - years * 365.25
-        timer_text = font.render(
-            f"Time: {years} years, {int(rem_days)} days, {hours:.1f} hours",
-            True,
-            WHITE,
-        )
-    else:
-        timer_text = font.render(
-            f"Time: {int(days)} days, {hours:.1f} hours", True, WHITE
-        )
-    screen.blit(timer_text, (10, 10))
+    sim_date = datetime.strptime(epoch_str, "%Y-%m-%d %H:%M:%S") + timedelta(
+        seconds=t
+    )
+    date_text = font.render(
+        f"Date: {sim_date.strftime('%Y-%m-%d %H:%M:%S')}", True, WHITE
+    )
+    screen.blit(date_text, (10, 10))
 
     help_text = small_font.render(
         "UP/DOWN: Zoom, LEFT/RIGHT: Speed, R: Reset", True, WHITE
