@@ -1,0 +1,2 @@
+[tool.pylint.main]
+extension-pkg-allow-list = ["pygame"]

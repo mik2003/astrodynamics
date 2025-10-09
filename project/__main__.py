@@ -7,7 +7,7 @@ import pygame
 
 from project.data import BodyList
 from project.formulas import simulate_n_steps
-from project.utilities import A, Dir, load_trails_npy
+from project.utilities import A, Dir
 
 # Simulation parameters
 dt = 3600  # simulation time step (seconds)
@@ -40,8 +40,8 @@ WHITE = (255, 255, 255)
 COLORS = [(255, 215, 0), (0, 191, 255), (220, 20, 60), (34, 139, 34)]
 
 
-trail_step_time = 3600 * 24  # [s]
-trail_time = 3600 * 24 * 365.25 * 10  # [s]
+trail_step_time = 3600 * 24 * 10  # [s]
+trail_time = 3600 * 24 * 365.25 * 100  # [s]
 TRAIL_STEP = int(trail_step_time / dt)  # Step between trail points
 TRAIL_LENGTH = int(
     trail_time / trail_step_time
@@ -91,7 +91,8 @@ def scale_pos(pos, center, scale):
     return int(center[0] + x_rot * scale), int(center[1] - y_tilt * scale)
 
 
-scale = 1e-9  # Adjust for visualization
+SCALE_INIT = 1e-9  # Adjust for visualization
+scale = SCALE_INIT
 center = np.array([WIDTH // 2, HEIGHT // 2, 0])
 
 bar_px = 100
@@ -106,7 +107,7 @@ bar_y = HEIGHT - margin
 frame = 0
 running = True
 num_bodies = len(body_list)
-focus_body_idx = 0  # Index of the focused body
+focus_body_idx = None  # Index of the focused body
 trail_cache_focus = None  # Last focus used for cache
 trail_cache_frame = 0  # Last frame used for cache
 cache_needs_update = False
@@ -124,10 +125,12 @@ mm = np.memmap(
 
 def update_trail_cache(cache: A) -> A:
     new_cache = np.roll(cache, -1, axis=0)
-    rel_trail_pos = (
-        mm[frame, :, :]
-        - mm[frame, :, focus_body_idx][np.newaxis, :, np.newaxis]
-    )
+    rel_trail_pos = mm[frame, :, :][np.newaxis, :, :]
+    if focus_body_idx:
+        rel_trail_pos = (
+            rel_trail_pos
+            - mm[frame, :, focus_body_idx][np.newaxis, :, np.newaxis]
+        )
     scaled_pos = scale_pos_array(rel_trail_pos, center, scale)
     new_cache[-1, :, :] = scaled_pos
 
@@ -137,14 +140,16 @@ def update_trail_cache(cache: A) -> A:
 def rebuild_trail_cache() -> A:
     new_cache = np.empty((TRAIL_LENGTH, 3, num_bodies))
     initial_point = max(0, frame - TRAIL_LENGTH * TRAIL_STEP + 1)
-    rel_trail_pos = (
-        mm[initial_point : frame + 1 : TRAIL_STEP, :, :]
-        - mm[
-            initial_point : frame + 1 : TRAIL_STEP,
-            :,
-            focus_body_idx,
-        ][:, :, np.newaxis]
-    )
+    rel_trail_pos = mm[initial_point : frame + 1 : TRAIL_STEP, :, :]
+    if focus_body_idx:
+        rel_trail_pos = (
+            rel_trail_pos
+            - mm[
+                initial_point : frame + 1 : TRAIL_STEP,
+                :,
+                focus_body_idx,
+            ][:, :, np.newaxis]
+        )
     scaled_pos = scale_pos_array(rel_trail_pos, center, scale)
     n = scaled_pos.shape[0]
     new_cache[-n:, :, :] = scaled_pos
@@ -152,6 +157,14 @@ def rebuild_trail_cache() -> A:
         scaled_pos[-n, :, :][np.newaxis, :, :], TRAIL_LENGTH - n, axis=0
     )
     return new_cache
+
+
+def is_on_screen(pos, margin=100):
+    """Check if a position is within screen bounds with some margin"""
+    return (
+        0 - margin <= pos[0] <= WIDTH + margin
+        and 0 - margin <= pos[1] <= HEIGHT + margin
+    )
 
 
 trail_cache = rebuild_trail_cache()
@@ -197,7 +210,7 @@ while running:
         cache_needs_update = True
 
     # Auto playback
-    frame += speed
+    frame += int(speed)
     if frame >= steps:
         frame = 0
         cache_needs_update = True
@@ -227,22 +240,24 @@ while running:
         elif event.type == pygame.KEYDOWN:
             if event.key == pygame.K_r:
                 frame = 0
+                scale = SCALE_INIT
+                rotation_x = 0
+                rotation_z = 0
+                focus_body_idx = None
+                speed = 1
                 cache_needs_update = True
         elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             mouse_x, mouse_y = event.pos
-            positions = mm[frame]
             for i in range(num_bodies):
-                # Calculate screen position relative to current focus
-                if focus_body_idx is not None:
-                    rel_pos = positions[:, i] - positions[:, focus_body_idx]
-                else:
-                    rel_pos = positions[:, i]
-                body_x, body_y = scale_pos(rel_pos, center, scale)
+                body_x, body_y = screen_pos[:2, i]
                 if abs(mouse_x - body_x) < 10 and abs(mouse_y - body_y) < 10:
                     if focus_body_idx != i:
                         focus_body_idx = i
-                        cache_needs_update = True
-                    break
+                        break
+                else:
+                    focus_body_idx = None
+            cache_needs_update = True
+            print(focus_body_idx)
 
     screen.fill(BLACK)
 
@@ -271,30 +286,28 @@ while running:
         label_pos = (end[0] + offset, end[1] + offset)
         screen.blit(label_text, label_pos)
 
-    # Draw bodies and their trails at current frame
-    positions = mm[frame]
-    # If a body is focused, subtract its position from all others
-    if focus_body_idx is not None:
-        focus_pos = positions[:, focus_body_idx]
-    else:
-        focus_pos = np.zeros(3)
     if cache_needs_update:
         trail_cache = rebuild_trail_cache()
 
     trail_cache = update_trail_cache(trail_cache)
 
+    screen_pos = trail_cache[-1, :, :]
+
     for i in range(num_bodies):
         color = COLORS[i % len(COLORS)]
-        if trail_cache.shape[0] > 1:
-            lines_list = list(map(tuple, trail_cache[:, 0:2, i]))
-            pygame.draw.lines(screen, color, False, lines_list, 1)
-        # Draw current position
-        rel_pos = positions[:, i] - focus_pos
-        x, y = scale_pos(rel_pos, center, scale)
-        pygame.draw.circle(screen, color, (x, y), 3)
-        if body_list[i].name:
-            text = small_font.render(body_list[i].name, True, WHITE)
-            screen.blit(text, (x + 15, y - 10))
+
+        # Only draw if the body is on screen
+        screen_pos_i = screen_pos[:2, i]
+        if is_on_screen(screen_pos_i):
+            if trail_cache.shape[0] > 1:
+                lines_list = list(map(tuple, trail_cache[:, 0:2, i]))
+                pygame.draw.lines(screen, color, False, lines_list, 1)
+            # Draw current position
+            pygame.draw.circle(screen, color, screen_pos_i, 3)
+            if body_list[i].name:
+                text = small_font.render(body_list[i].name, True, WHITE)
+                screen.blit(text, (screen_pos_i[0] + 15, screen_pos_i[1] - 10))
+
     trail_cache_frame = frame
 
     # Draw timer and simulation info
