@@ -1,9 +1,39 @@
+import os
 from pathlib import Path
 
 import numpy as np
 
 from project.data import BodyList
-from project.utilities import A, append_positions_npy
+from project.utilities import A, Dir, append_positions_npy
+
+
+class Simulation:
+    def __init__(self, name: str, dt: float, time: float) -> None:
+        self.name = name
+        self.dt = dt
+        self.time = time
+        self.steps = int(time / dt)
+
+        file_in = Dir.data_dir.joinpath(self.name + ".json")
+        file_traj = Dir.data_dir.joinpath(f"{self.name}_{dt}_{self.steps}.bin")
+
+        # Run simulation first and save trajectory with progress tracker
+        self.body_list = BodyList.load(file_in)
+        self.num_bodies = len(self.body_list)
+        self.epoch = self.body_list.metadata["epoch"]
+        if not os.path.exists(file_traj):
+            print(f"Simulating {time:.2e} seconds...")
+            simulate_n_steps(
+                self.body_list, self.steps, dt, file_traj, prnt=True
+            )
+            print("\nSimulation complete.")
+
+        self.data = np.memmap(
+            file_traj,
+            dtype="float64",
+            mode="r",
+            shape=(self.steps, 9, self.num_bodies),
+        )[:, 0:3, :]
 
 
 def a(body_list: BodyList, r: A) -> A:
