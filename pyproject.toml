@@ -1,2 +1,5 @@
 [tool.pylint.main]
 extension-pkg-allow-list = ["pygame"]
+
+[tool.flake8]
+extend-ignore = ["E203"]

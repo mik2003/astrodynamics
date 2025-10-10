@@ -45,11 +45,16 @@ class Visualization:
         self.frame = 0
         self.running = True
 
-        self.trail_cache: A | None = None
+        self.trail_cache: A
         self.focus_body_idx: int | None = None  # Index of the focused body
         self.trail_cache_focus: int | None = None  # Last focus used for cache
         self.trail_cache_frame = 0  # Last self.frame used for cache
         self.cache_needs_update = False
+
+        self.screen: pygame.Surface
+        self.clock: pygame.time.Clock
+        self.font: pygame.font.Font
+        self.small_font: pygame.font.Font
 
     def start(self) -> None:
         pygame.init()
@@ -195,7 +200,7 @@ class Visualization:
             color = VisC.colors[i % len(VisC.colors)]
 
             # Only draw if the body is on screen
-            screen_pos_i = screen_pos[:2, i]
+            screen_pos_i = list(screen_pos[:2, i])
             if self.is_on_screen(screen_pos_i):
                 if self.trail_cache.shape[0] > 1:
                     lines_list = list(map(tuple, self.trail_cache[:, 0:2, i]))
@@ -308,11 +313,11 @@ class Visualization:
 
     def update_trail_cache(self) -> None:
         new_cache = np.roll(self.trail_cache, -1, axis=0)
-        rel_trail_pos = self.sim.data[self.frame, :, :][np.newaxis, :, :]
+        rel_trail_pos = self.sim.r[self.frame, :, :][np.newaxis, :, :]
         if self.focus_body_idx:
             rel_trail_pos = (
                 rel_trail_pos
-                - self.sim.data[self.frame, :, self.focus_body_idx][
+                - self.sim.r[self.frame, :, self.focus_body_idx][
                     np.newaxis, :, np.newaxis
                 ]
             )
@@ -326,13 +331,13 @@ class Visualization:
         initial_point = max(
             0, self.frame - self.trail_length * self.trail_step + 1
         )
-        rel_trail_pos = self.sim.data[
+        rel_trail_pos = self.sim.r[
             initial_point : self.frame + 1 : self.trail_step, :, :
         ]
         if self.focus_body_idx:
             rel_trail_pos = (
                 rel_trail_pos
-                - self.sim.data[
+                - self.sim.r[
                     initial_point : self.frame + 1 : self.trail_step,
                     :,
                     self.focus_body_idx,

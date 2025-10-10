@@ -20,7 +20,9 @@ class Simulation:
         # Run simulation first and save trajectory with progress tracker
         self.body_list = BodyList.load(file_in)
         self.num_bodies = len(self.body_list)
-        self.epoch = self.body_list.metadata["epoch"]
+        self.epoch = (
+            self.body_list.metadata["epoch"] if self.body_list.metadata else ""
+        )
         if not os.path.exists(file_traj):
             print(f"Simulating {time:.2e} seconds...")
             simulate_n_steps(
@@ -28,12 +30,15 @@ class Simulation:
             )
             print("\nSimulation complete.")
 
-        self.data = np.memmap(
+        mm = np.memmap(
             file_traj,
             dtype="float64",
             mode="r",
             shape=(self.steps, 9, self.num_bodies),
-        )[:, 0:3, :]
+        )
+
+        self.r = mm[:, 0:3, :]
+        self.v = mm[:, 3:6, :]
 
 
 def a(body_list: BodyList, r: A) -> A:
@@ -50,7 +55,8 @@ def a(body_list: BodyList, r: A) -> A:
         a_i = np.zeros((3, 1))
 
         for j in range(n_bodies):
-            if i == j or body_list[j].mu is None:
+            mu = body_list[j].mu
+            if i == j or mu is None:
                 continue
 
             r_j = r[:, j : j + 1]  # Keep as (3, 1) for broadcasting
@@ -60,7 +66,7 @@ def a(body_list: BodyList, r: A) -> A:
             if dist == 0:  # avoid division by zero
                 continue
 
-            a_i += body_list[j].mu * r_ij / dist**3
+            a_i += mu * r_ij / dist**3
 
         a_mat[:, i : i + 1] = a_i
 

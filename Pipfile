@@ -24,6 +24,7 @@ mypy = "*"
 pylint = "*"
 pytest = "*"
 pytest-cov = "*"
+flake8-black = "*"
 
 [requires]
 python_version = "3.13"

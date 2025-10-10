@@ -1,44 +1,10 @@
-import os
 import time
 
 import matplotlib.pyplot as plt
 import numpy as np
 
-from project.data import BodyList
-from project.formulas import simulate_n_steps
-from project.utilities import Dir
+from project.simulation import Simulation
 
-# Simulation parameters
-dt = 3600  # simulation time step (seconds)
-time_total = 3600 * 24 * 365.25 * 100  # simulation time (seconds)
-steps = int(time_total / dt)  # total number of simulation steps
-
-fname = "full_solar_system_with_dwarf_planets"
-file_in = Dir.data_dir.joinpath(fname + ".json")
-file_traj = Dir.data_dir.joinpath(f"{fname}_{dt}_{steps}.bin")
-
-# Run simulation first and save trajectory with progress tracker
-body_list = BodyList.load(file_in)
-if not os.path.exists(file_traj):
-    print(f"Simulating {time_total:.2e} seconds...")
-    simulate_n_steps(body_list, steps, dt, file_traj, prnt=True)
-    print("\nSimulation complete.")
-
-num_bodies = len(body_list)
-
-mm = np.memmap(
-    file_traj,
-    dtype="float64",
-    mode="r",
-    shape=(steps, 9, num_bodies),
-)
-
-r = mm[:, 0:3, :]  # positions
-v = mm[:, 3:6, :]  # velocities
-
-# Extract gravitational parameters
-mu_list = [body.mu for body in body_list]
-mu = np.array(mu_list)
 G = 6.67430e-11
 
 
@@ -59,7 +25,6 @@ def calculate_energy(r, v, mu):
 
     # Create indices for all unique pairs
     i_idx, j_idx = np.triu_indices(n_bodies, k=1)
-    n_pairs = len(i_idx)
 
     start_time = time.time()
     print("Calculating energy...")
@@ -113,49 +78,65 @@ def calculate_energy(r, v, mu):
     return e_kin + e_pot
 
 
-# Calculate energy with progress bar
-e_total = calculate_energy(r, v, mu)
+if __name__ == "__main__":
 
-# Optimized angular momentum calculation
-# r shape: (steps, 3, num_bodies), v shape: (steps, 3, num_bodies)
-# We need to multiply v by mass (mu/G) for each body
-masses = mu / G  # shape: (num_bodies,)
-v_weighted = (
-    v * masses[None, None, :]
-)  # Broadcast masses across time and coordinates
+    sim = Simulation(
+        name="full_solar_system_with_dwarf_planets",
+        dt=3600,  # simulation time step (seconds)
+        time=3600 * 24 * 365.25,  # simulation time (seconds)
+    )
 
-# Calculate angular momentum: h = sum(r × (m*v)) for all bodies at each time step
-h = np.sum(np.cross(r, v_weighted, axis=1), axis=2)  # shape: (steps, 3)
-h_0 = h[0, 2]
+    # Extract gravitational parameters
+    mu_list = [body.mu for body in sim.body_list]
+    mu = np.array(mu_list)
 
-# Plotting
-t = np.arange(0, time_total, dt) / 3600 / 24
+    # Calculate energy with progress bar
+    e_total = calculate_energy(sim.r, sim.v, mu)
 
-plt.figure(figsize=(12, 8))
+    # Optimized angular momentum calculation
+    # r shape: (steps, 3, num_bodies), v shape: (steps, 3, num_bodies)
+    # We need to multiply v by mass (mu/G) for each body
+    masses = mu / G  # shape: (num_bodies,)
+    v_weighted = (
+        sim.v * masses[None, None, :]
+    )  # Broadcast masses across time and coordinates
 
-plt.subplot(2, 1, 1)
-plt.plot(t, (h[:, 2] - h_0) / h_0 * 100, label="Specific angular momentum")
-plt.ylabel("Change [%]")
-plt.title("Change in Angular Momentum")
-plt.legend()
+    # Calculate angular momentum: h = sum(r × (m*v))
+    # for all bodies at each time step
+    h = np.sum(
+        np.cross(sim.r, v_weighted, axis=1), axis=2
+    )  # shape: (steps, 3)
+    h_0 = h[0, 2]
 
-plt.subplot(2, 1, 2)
-plt.plot(
-    t,
-    (e_total - e_total[0]) / e_total[0] * 100,
-    label="Total Energy",
-    linewidth=2,
-)
-plt.ylabel("Change [%]")
-plt.xlabel("Time [day]")
-plt.title("Change in Energy Components")
-plt.legend()
+    # Plotting
+    t = np.arange(0, sim.time, sim.dt) / 3600 / 24
 
-plt.tight_layout()
-plt.show()
+    plt.figure(figsize=(12, 8))
 
-print(f"Initial total energy: {e_total[0]:.6e}")
-print(f"Final total energy: {e_total[-1]:.6e}")
-print(
-    f"Energy conservation: {((e_total[-1] - e_total[0]) / e_total[0] * 100):.6f}%"
-)
+    plt.subplot(2, 1, 1)
+    plt.plot(t, (h[:, 2] - h_0) / h_0 * 100, label="Specific angular momentum")
+    plt.ylabel("Change [%]")
+    plt.title("Change in Angular Momentum")
+    plt.legend()
+
+    plt.subplot(2, 1, 2)
+    plt.plot(
+        t,
+        (e_total - e_total[0]) / e_total[0] * 100,
+        label="Total Energy",
+        linewidth=2,
+    )
+    plt.ylabel("Change [%]")
+    plt.xlabel("Time [day]")
+    plt.title("Change in Energy Components")
+    plt.legend()
+
+    plt.tight_layout()
+    plt.show()
+
+    print(f"Initial total energy: {e_total[0]:.6e}")
+    print(f"Final total energy: {e_total[-1]:.6e}")
+    print(
+        "Energy conservation: "
+        + f"{((e_total[-1] - e_total[0]) / e_total[0] * 100):.6f}%"
+    )

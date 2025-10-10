@@ -1,10 +1,9 @@
 import json
 import os
 from pathlib import Path
-from typing import Any, Dict, List, TypeVar
+from typing import Any, Dict, TypeVar
 
 import numpy as np
-import numpy.typing as npt
 from pydantic import BaseModel, ValidationError, field_validator
 
 from project.utilities import A, camel_to_snake
@@ -124,7 +123,9 @@ class BodyList(list[Body]):
     @property
     def r_0(self) -> A:
         if self._r_0 is None:
-            self._r_0 = np.hstack([body.r_0 for body in self])
+            self._r_0 = np.hstack(
+                [body.r_0 for body in self if body.r_0 is not None]
+            )
         return self._r_0
 
     @r_0.setter
@@ -134,7 +135,9 @@ class BodyList(list[Body]):
     @property
     def v_0(self) -> A:
         if self._v_0 is None:
-            self._v_0 = np.hstack([body.v_0 for body in self])
+            self._v_0 = np.hstack(
+                [body.v_0 for body in self if body.v_0 is not None]
+            )
         return self._v_0
 
     @v_0.setter

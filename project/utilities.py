@@ -23,7 +23,9 @@ class Dir:
     data_dir = pathlib.Path(main_dir).parent.absolute().joinpath("data")
 
 
-def append_positions_npy(filename: str, positions_buffer: np.ndarray) -> None:
+def append_positions_npy(
+    filename: pathlib.Path, positions_buffer: np.ndarray
+) -> None:
     """
     Append positions to a binary file.
     positions_buffer: shape (buffer_size, num_bodies, 3)
