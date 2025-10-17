@@ -73,6 +73,38 @@ def a(body_list: BodyList, r: A) -> A:
     return a_mat
 
 
+def a_single(body_list: BodyList, r: A) -> A:
+    """
+    Compute accelerations for all bodies at given positions r.
+    r is shaped (3, N), with each column representing a body's position.
+    Returns accelerations in the same shape (3, N).
+    """
+    n_bodies = r.shape[1]
+    a_mat = np.zeros_like(r)
+
+    for i in range(n_bodies):
+        r_i = r[:, i : i + 1]  # Keep as (3, 1) for broadcasting
+        a_i = np.zeros((3, 1))
+
+        for j in range(n_bodies):
+            mu = body_list[j].mu
+            if i == j or mu is None:
+                continue
+
+            r_j = r[:, j : j + 1]  # Keep as (3, 1) for broadcasting
+            r_ij = r_j - r_i
+            dist = np.linalg.norm(r_ij)
+
+            if dist == 0:  # avoid division by zero
+                continue
+
+            a_i += mu * r_ij / dist**3
+
+        a_mat[:, i : i + 1] = a_i
+
+    return a_mat
+
+
 def rk4_step(body_list: BodyList, h: float) -> None:
 
     k_r1 = body_list.v_0
