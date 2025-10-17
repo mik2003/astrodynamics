@@ -81,7 +81,7 @@ def calculate_energy(r, v, mu):
 if __name__ == "__main__":
 
     sim = Simulation(
-        name="inner_solar_system_2460959",
+        name="sun_earth_moon_2460966",
         dt=3600,  # simulation time step (seconds)
         time=3600 * 24 * 365.25 * 100,  # simulation time (seconds)
     )

@@ -632,14 +632,12 @@ if __name__ == "__main__":
     full_solar_system = create_solar_system_data(
         target_bodies=[
             "Sun",
-            "Mercury",
-            "Venus",
             "Earth",
-            "Mars",
+            "Moon",
         ],
         center_body="@0",  # Solar System Barycenter
-        epoch="2025-10-10 12:00:00",
-        output_filename="inner_solar_system",
+        epoch="2025-10-17 12:00:00",
+        output_filename="sun_earth_moon",
         email_addr="michelangelosecondo+horizons@gmail.com",  # Replace with your actual email
         use_existing=False,  # Set to True after first run to use cached data
     )

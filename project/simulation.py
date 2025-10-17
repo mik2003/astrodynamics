@@ -47,77 +47,68 @@ def a(body_list: BodyList, r: A) -> A:
     r is shaped (3, N), with each column representing a body's position.
     Returns accelerations in the same shape (3, N).
     """
-    n_bodies = r.shape[1]
-    a_mat = np.zeros_like(r)
+    # Precompute all mus once
+    mus = np.array([body.mu for body in body_list])
 
-    for i in range(n_bodies):
-        r_i = r[:, i : i + 1]  # Keep as (3, 1) for broadcasting
-        a_i = np.zeros((3, 1))
+    # Vectorized approach - compute all pairwise differences at once
+    # r_i: (3, N, 1), r_j: (3, 1, N) -> r_ij: (3, N, N)
+    r_i = r[:, :, np.newaxis]  # Shape: (3, N, 1)
+    r_j = r[:, np.newaxis, :]  # Shape: (3, 1, N)
+    r_ij = r_j - r_i  # Shape: (3, N, N)
 
-        for j in range(n_bodies):
-            mu = body_list[j].mu
-            if i == j or mu is None:
-                continue
+    # Compute squared distances (avoid sqrt)
+    dist_sq = np.sum(r_ij**2, axis=0)  # Shape: (N, N)
 
-            r_j = r[:, j : j + 1]  # Keep as (3, 1) for broadcasting
-            r_ij = r_j - r_i
-            dist = np.linalg.norm(r_ij)
+    # Avoid division by zero and self-interaction
+    np.fill_diagonal(dist_sq, np.inf)
 
-            if dist == 0:  # avoid division by zero
-                continue
+    # Compute acceleration contributions
+    # mus: (N,) -> (1, N) for broadcasting
+    mus_expanded = mus[np.newaxis, :]  # Shape: (1, N)
 
-            a_i += mu * r_ij / dist**3
+    # acceleration = mu * r_ij / dist^(3/2)
+    # Since we have dist_sq, we use dist_sq^(3/2) = dist_sq * sqrt(dist_sq)
+    dist_cubed = dist_sq * np.sqrt(
+        dist_sq
+    )  # Only one sqrt per pair instead of per component
 
-        a_mat[:, i : i + 1] = a_i
+    # Compute acceleration for each pair: mu * r_ij / dist_cubed
+    # r_ij: (3, N, N), mus_expanded: (1, N) -> need to align dimensions
+    accel_contributions = (
+        r_ij * mus_expanded[np.newaxis, :, :] / dist_cubed[np.newaxis, :, :]
+    )
 
-    return a_mat
-
-
-def a_single(body_list: BodyList, r: A) -> A:
-    """
-    Compute accelerations for all bodies at given positions r.
-    r is shaped (3, N), with each column representing a body's position.
-    Returns accelerations in the same shape (3, N).
-    """
-    n_bodies = r.shape[1]
-    a_mat = np.zeros_like(r)
-
-    for i in range(n_bodies):
-        r_i = r[:, i : i + 1]  # Keep as (3, 1) for broadcasting
-        a_i = np.zeros((3, 1))
-
-        for j in range(n_bodies):
-            mu = body_list[j].mu
-            if i == j or mu is None:
-                continue
-
-            r_j = r[:, j : j + 1]  # Keep as (3, 1) for broadcasting
-            r_ij = r_j - r_i
-            dist = np.linalg.norm(r_ij)
-
-            if dist == 0:  # avoid division by zero
-                continue
-
-            a_i += mu * r_ij / dist**3
-
-        a_mat[:, i : i + 1] = a_i
+    # Sum over j dimension to get total acceleration for each i
+    a_mat = np.sum(accel_contributions, axis=2)  # Shape: (3, N)
 
     return a_mat
 
 
-def rk4_step(body_list: BodyList, h: float) -> None:
+def rk4_step(
+    body_list: BodyList,
+    h: float,
+    k_arrays: list,
+    buffer: A,
+    step: int,
+) -> None:
 
-    k_r1 = body_list.v_0
-    k_v1 = a(body_list, body_list.r_0)
+    k_r1, k_r2, k_r3, k_r4, k_v1, k_v2, k_v3, k_v4 = k_arrays
 
-    k_r2 = body_list.v_0 + k_v1 * h / 2
-    k_v2 = a(body_list, body_list.r_0 + k_r1 * h / 2)
+    k_r1[:] = body_list.v_0
+    k_v1[:] = a(body_list, body_list.r_0)
 
-    k_r3 = body_list.v_0 + k_v2 * h / 2
-    k_v3 = a(body_list, body_list.r_0 + k_r2 * h / 2)
+    buffer[step, 0:3, :] = body_list.r_0
+    buffer[step, 3:6, :] = k_r1
+    buffer[step, 6:9, :] = k_v1
 
-    k_r4 = body_list.v_0 + k_v3 * h
-    k_v4 = a(body_list, body_list.r_0 + k_r3 * h)
+    k_r2[:] = body_list.v_0 + k_v1 * h / 2
+    k_v2[:] = a(body_list, body_list.r_0 + k_r1 * h / 2)
+
+    k_r3[:] = body_list.v_0 + k_v2 * h / 2
+    k_v3[:] = a(body_list, body_list.r_0 + k_r2 * h / 2)
+
+    k_r4[:] = body_list.v_0 + k_v3 * h
+    k_v4[:] = a(body_list, body_list.r_0 + k_r3 * h)
 
     body_list.r_0 = body_list.r_0 + h / 6 * (k_r1 + 2 * k_r2 + 2 * k_r3 + k_r4)
     body_list.v_0 = body_list.v_0 + h / 6 * (k_v1 + 2 * k_v2 + 2 * k_v3 + k_v4)
@@ -132,15 +123,12 @@ def simulate_n_steps(
 ) -> None:
     import time
 
-    buffer = []
+    buffer = np.zeros((n, 9, len(body_list)))
+    k_arrays = [np.zeros_like(body_list.r_0) for _ in range(8)]
     start_time = time.time()
     for i in range(n):
-        x_0 = np.vstack(
-            [body_list.r_0, body_list.v_0, a(body_list, body_list.r_0)]
-        )
-        buffer.append(x_0)
-        rk4_step(body_list, dt)
-        if prnt and i % 100 == 0:
+        rk4_step(body_list, dt, k_arrays, buffer, i)
+        if prnt and i % 1000 == 0:
             progress = int(i / n * 50)
             bar = "[" + "#" * progress + "-" * (50 - progress) + "]"
             elapsed = time.time() - start_time
