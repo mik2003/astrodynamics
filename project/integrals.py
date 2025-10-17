@@ -81,24 +81,24 @@ def calculate_energy(r, v, mu):
 if __name__ == "__main__":
 
     sim = Simulation(
-        name="full_solar_system_with_dwarf_planets",
+        name="inner_solar_system_2460959",
         dt=3600,  # simulation time step (seconds)
-        time=3600 * 24 * 365.25,  # simulation time (seconds)
+        time=3600 * 24 * 365.25 * 100,  # simulation time (seconds)
     )
 
     # Extract gravitational parameters
     mu_list = [body.mu for body in sim.body_list]
-    mu = np.array(mu_list)
+    mu_arr = np.array(mu_list)
 
     # Calculate energy with progress bar
-    e_total = calculate_energy(sim.r, sim.v, mu)
+    e_total = calculate_energy(sim.r, sim.v, mu_arr)
 
     # Optimized angular momentum calculation
     # r shape: (steps, 3, num_bodies), v shape: (steps, 3, num_bodies)
     # We need to multiply v by mass (mu/G) for each body
-    masses = mu / G  # shape: (num_bodies,)
+    masses_ = mu_arr / G  # shape: (num_bodies,)
     v_weighted = (
-        sim.v * masses[None, None, :]
+        sim.v * masses_[None, None, :]
     )  # Broadcast masses across time and coordinates
 
     # Calculate angular momentum: h = sum(r × (m*v))
@@ -109,19 +109,21 @@ if __name__ == "__main__":
     h_0 = h[0, 2]
 
     # Plotting
-    t = np.arange(0, sim.time, sim.dt) / 3600 / 24
+    t_ = np.arange(0, sim.time, sim.dt) / 3600 / 24
 
     plt.figure(figsize=(12, 8))
 
     plt.subplot(2, 1, 1)
-    plt.plot(t, (h[:, 2] - h_0) / h_0 * 100, label="Specific angular momentum")
+    plt.plot(
+        t_, (h[:, 2] - h_0) / h_0 * 100, label="Specific angular momentum"
+    )
     plt.ylabel("Change [%]")
     plt.title("Change in Angular Momentum")
     plt.legend()
 
     plt.subplot(2, 1, 2)
     plt.plot(
-        t,
+        t_,
         (e_total - e_total[0]) / e_total[0] * 100,
         label="Total Energy",
         linewidth=2,

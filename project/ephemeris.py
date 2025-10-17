@@ -1,13 +1,13 @@
-import datetime
 import json
 import pathlib
 import re
 import time
+from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
 import requests
 
-from project.utilities import Dir
+from project.utilities import Dir, datetime_to_jd
 
 # NASA Horizons body IDs and names mapping
 # Add these to your HORIZONS_BODIES dictionary
@@ -398,17 +398,16 @@ def fetch_body_data(
         start_time = epoch
         # Add 1 hour to stop time to ensure we get at least one ephemeris record
         stop_time = (
-            datetime.datetime.strptime(epoch, "%Y-%m-%d %H:%M:%S")
-            + datetime.timedelta(hours=1)
+            datetime.strptime(epoch, "%Y-%m-%d %H:%M:%S") + timedelta(hours=1)
         ).strftime("%Y-%m-%d %H:%M:%S")
         step_size = "1h"  # 1 hour step to ensure we get our requested time
     else:
         # Use current time if no epoch specified
-        current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         start_time = current_time
-        stop_time = (
-            datetime.datetime.now() + datetime.timedelta(hours=1)
-        ).strftime("%Y-%m-%d %H:%M:%S")
+        stop_time = (datetime.now() + timedelta(hours=1)).strftime(
+            "%Y-%m-%d %H:%M:%S"
+        )
         step_size = "1h"
 
     # Build request parameters
@@ -525,7 +524,7 @@ def create_solar_system_data(
 
     result_data = {
         "metadata": {
-            "generated_utc": datetime.datetime.utcnow().isoformat(),
+            "generated_utc": datetime.utcnow().isoformat(),
             "center_body": center_body,
             "epoch": epoch if epoch else "current",
             "target_count": len(body_list),
@@ -534,7 +533,7 @@ def create_solar_system_data(
     }
 
     # Save to file
-    file_path = save_horizons_data(result_data, output_filename)
+    file_path = save_horizons_data(result_data, output_filename, epoch=epoch)
 
     print(f"\n🎉 SOLAR SYSTEM DATA GENERATION COMPLETE")
     print(f"📊 Bodies processed: {len(body_list)}/{len(target_bodies)}")
@@ -546,8 +545,8 @@ def create_solar_system_data(
 def save_horizons_data(
     data: Dict[str, Any],
     filename: str,
+    epoch: str = None,
     data_dir: pathlib.Path = None,
-    timestamp: bool = True,
     backup_existing: bool = True,
 ) -> pathlib.Path:
     """
@@ -556,9 +555,10 @@ def save_horizons_data(
     if data_dir is None:
         data_dir = Dir.data_dir
 
-    if timestamp:
-        timestamp_str = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"{filename}_{timestamp_str}.json"
+    if epoch:
+        epoch_d = datetime.strptime(epoch, "%Y-%m-%d %H:%M:%S")
+        epoch_j = datetime_to_jd(epoch_d)
+        filename = f"{filename}_{epoch_j:.0f}.json"
     else:
         filename = f"{filename}.json"
 
@@ -636,19 +636,10 @@ if __name__ == "__main__":
             "Venus",
             "Earth",
             "Mars",
-            "Jupiter",
-            "Saturn",
-            "Uranus",
-            "Neptune",
-            "Pluto",  # Dwarf planet
-            "Ceres",  # Dwarf planet in asteroid belt
-            "Eris",  # Dwarf planet beyond Neptune
-            "Haumea",  # Dwarf planet beyond Neptune
-            "Makemake",  # Dwarf planet beyond Neptune
         ],
         center_body="@0",  # Solar System Barycenter
-        epoch="2024-12-20 12:00:00",
-        output_filename="full_solar_system_with_dwarf_planets",
-        email_addr="your_email@example.com",  # Replace with your actual email
+        epoch="2025-10-10 12:00:00",
+        output_filename="inner_solar_system",
+        email_addr="michelangelosecondo+horizons@gmail.com",  # Replace with your actual email
         use_existing=False,  # Set to True after first run to use cached data
     )

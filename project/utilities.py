@@ -1,5 +1,6 @@
 import os
 import pathlib
+from datetime import datetime
 from typing import List
 
 import numpy as np
@@ -50,3 +51,33 @@ def load_trails_npy(
     indices = np.arange(num_records - 1, -1, -step_interval)[:last_n_steps]
     trails = [mm[i] for i in indices[::-1]]  # chronological order
     return trails
+
+
+def datetime_to_jd(dt: datetime) -> float:
+    """Convert datetime to Julian Date"""
+    year = dt.year
+    month = dt.month
+    day = dt.day
+    hour = dt.hour
+    minute = dt.minute
+    second = dt.second
+
+    # Convert to fractional day
+    fractional_day = (hour + minute / 60 + second / 3600) / 24
+
+    # Julian Date calculation
+    if month <= 2:
+        year -= 1
+        month += 12
+
+    a = year // 100
+    b = 2 - a + a // 4
+    jd_day = (
+        int(365.25 * (year + 4716))
+        + int(30.6001 * (month + 1))
+        + day
+        + b
+        - 1524.5
+    )
+
+    return jd_day + fractional_day
