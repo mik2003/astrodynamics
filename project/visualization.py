@@ -1,4 +1,5 @@
 import sys
+import time
 from datetime import datetime, timedelta
 from typing import List
 
@@ -124,7 +125,7 @@ class Visualization:
             trail_time / trail_step_time
         )  # Number of positions to keep in trail
 
-        self.speed = 1.0  # Playback speed [steps\self.frame]
+        self.speed = 1.0  # Playback speed [days\s]
         self.rotation_z = 0.0  # Rotation in-plane [rad]
         self.rotation_x = 0.0  # Rotation out-of-plane [rad]
         self._scale = scale
@@ -138,6 +139,9 @@ class Visualization:
         self.screen_info: pygame.display._VidInfo
 
         self.frame = 0
+        self.frame_t0 = time.time()
+        self.last_frame_time = 0.0
+        self._fractional_steps = 0.0
         self.running = True
 
         self.trail_cache: A
@@ -236,6 +240,7 @@ class Visualization:
 
         while self.running:
             self.handle_input()
+            self.advance_frame()
 
             if self.cache_needs_update:
                 self.rebuild_trail_cache()
@@ -251,18 +256,10 @@ class Visualization:
         # Continuous key press handling
         keys = pygame.key.get_pressed()
         if keys[pygame.K_RIGHT]:
-            # Increase speed, use finer steps for low speeds
-            if self.speed < 1:
-                self.speed = min(self.speed + 0.1, 100)
-            else:
-                self.speed = min(self.speed + 1, 100)
+            self.speed *= 1.01
             self.cache_needs_update = True
         if keys[pygame.K_LEFT]:
-            # Decrease speed, allow fractional speeds down to 0.1
-            if self.speed <= 1:
-                self.speed = max(self.speed - 0.1, 0.1)
-            else:
-                self.speed = max(self.speed - 1, 0.1)
+            self.speed /= 1.01
             self.cache_needs_update = True
 
         if keys[pygame.K_UP]:
@@ -285,14 +282,6 @@ class Visualization:
         if keys[pygame.K_s]:
             self.rotation_x += 0.02
             self.cache_needs_update = True
-
-        # Auto playback
-        self.frame += int(self.speed)
-        if self.frame >= self.sim.steps:
-            self.frame = 0
-            self.cache_needs_update = True
-        # Ensure frame is integer for indexing
-        self.frame = int(self.frame)
 
         # Event handling for quit, manual reset, and mouse click
         slider_changed = False
@@ -392,6 +381,40 @@ class Visualization:
 
         # Recreate sliders to fit new screen size
         self.create_sliders()
+
+    def advance_frame(self) -> None:
+        # Calculate real time elapsed since last frame
+        current_time = time.time()
+        real_time_elapsed = current_time - self.frame_t0
+        self.frame_t0 = current_time
+
+        # Calculate how many simulation steps to advance
+        days_to_advance = self.speed * real_time_elapsed
+        seconds_to_advance = days_to_advance * 86400  # 86400 seconds in a day
+
+        total_steps = seconds_to_advance / self.sim.dt + self._fractional_steps
+        steps_to_advance = int(total_steps)
+        self._fractional_steps = (
+            total_steps - steps_to_advance
+        )  # Store remainder
+
+        if steps_to_advance > 0:
+            self.frame += steps_to_advance
+            if self.frame >= self.sim.steps:
+                self.frame = 0
+                self.cache_needs_update = True
+
+            # Ensure frame is integer for indexing
+            self.frame = int(self.frame)
+            self.cache_needs_update = True
+
+        # Store the actual frame time for FPS calculation
+        self.last_frame_time = real_time_elapsed
+
+        # Cap at 60 FPS to prevent excessive CPU usage
+        if self.last_frame_time < 1 / 60:
+            pygame.time.wait(int(1000 * (1 / 60 - self.last_frame_time)))
+            self.last_frame_time = 1 / 60  # Use minimum frame time
 
     def draw_frame(self) -> None:
         self.screen.fill(VisC.black)
@@ -509,18 +532,9 @@ class Visualization:
             slider.draw(self.screen, self.small_font)
 
     def draw_info(self) -> None:
-        # Limit FPS to 60 and get actual FPS
-        self.clock.tick(60)
-        actual_fps = (
-            self.clock.get_fps() or 0
-        )  # Avoid division by zero, fallback to 60 if not available
-
-        # Calculate and display simulation speed (simulated seconds per real second)
-        sim_speed = (
-            self.speed * self.sim.dt * actual_fps / 3600 / 24
-        )  # sim days per real second
+        actual_fps = 1 / self.last_frame_time
         sim_speed_text = self.small_font.render(
-            f"Sim speed: {sim_speed:.2f} days/s | FPS: {actual_fps:.1f} |"
+            f"Sim speed: {self.speed:.2f} days/s | FPS: {actual_fps:.0f} |"
             + f" Progress: {self.frame}/{self.sim.steps}",
             True,
             VisC.white,
