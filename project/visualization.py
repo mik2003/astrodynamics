@@ -47,6 +47,7 @@ class Visualization:
 
         self.trail_cache: A
         self.focus_body_idx: int | None = None  # Index of the focused body
+        self.trail_focus_body_idx: int | None = None  # Index of trail focus
         self.trail_cache_focus: int | None = None  # Last focus used for cache
         self.trail_cache_frame = 0  # Last self.frame used for cache
         self.cache_needs_update = False
@@ -70,9 +71,10 @@ class Visualization:
         while self.running:
             self.handle_input()
 
-            if self.cache_needs_update:
-                self.rebuild_trail_cache()
-            self.update_trail_cache()
+            # if self.cache_needs_update:
+            #     self.rebuild_trail_cache()
+            # self.update_trail_cache()
+            self.rebuild_trail_cache()
 
             self.draw_frame()
             self.draw_info()
@@ -151,17 +153,34 @@ class Visualization:
                     self.speed = 1
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 mouse_x, mouse_y = event.pos
+                body_clicked = False
+
                 for i in range(self.sim.num_bodies):
                     body_x, body_y = self.trail_cache[-1, :2, i]
                     if (
                         abs(mouse_x - body_x) < 10
                         and abs(mouse_y - body_y) < 10
                     ):
+                        body_clicked = True
+
                         if self.focus_body_idx != i:
+                            # First click on a different body
                             self.focus_body_idx = i
-                            break
+                        else:
+                            # Second click on the same body
+                            self.trail_focus_body_idx = i
+                        break
+
+                # Only reset if no body was clicked
+                if not body_clicked:
+                    if self.trail_focus_body_idx is not None:
+                        # First click in empty space
+                        self.trail_focus_body_idx = None
                     else:
+                        # Second click in empty space
                         self.focus_body_idx = None
+
+                print(self.focus_body_idx, self.trail_focus_body_idx)
             self.cache_needs_update = True
 
     def draw_frame(self) -> None:
@@ -313,15 +332,18 @@ class Visualization:
 
     def update_trail_cache(self) -> None:
         new_cache = np.roll(self.trail_cache, -1, axis=0)
-        rel_trail_pos = self.sim.r[self.frame, :, :][np.newaxis, :, :]
-        if self.focus_body_idx:
-            rel_trail_pos = (
-                rel_trail_pos
-                - self.sim.r[self.frame, :, self.focus_body_idx][
-                    np.newaxis, :, np.newaxis
-                ]
-            )
-        scaled_pos = self.scale_pos_array(rel_trail_pos)
+        current_pos = self.sim.mm[self.frame, 0:3, :][np.newaxis, :, :]
+        if self.trail_focus_body_idx is not None:
+            trail_focus_body_pos = self.sim.mm[
+                self.frame, 0:3, self.trail_focus_body_idx
+            ][np.newaxis, :, np.newaxis]
+            current_pos = current_pos - trail_focus_body_pos
+        elif self.focus_body_idx is not None:
+            focus_body_pos = self.sim.mm[-1, 0:3, self.focus_body_idx][
+                np.newaxis, :, np.newaxis
+            ]
+            current_pos = current_pos - focus_body_pos
+        scaled_pos = self.scale_pos_array(current_pos)
         new_cache[-1, :, :] = scaled_pos
 
         self.trail_cache = new_cache
@@ -331,19 +353,24 @@ class Visualization:
         initial_point = max(
             0, self.frame - self.trail_length * self.trail_step + 1
         )
-        rel_trail_pos = self.sim.r[
-            initial_point : self.frame + 1 : self.trail_step, :, :
+        current_pos = self.sim.mm[
+            initial_point : self.frame + 1 : self.trail_step, 0:3, :
         ]
-        if self.focus_body_idx:
-            rel_trail_pos = (
-                rel_trail_pos
-                - self.sim.r[
-                    initial_point : self.frame + 1 : self.trail_step,
-                    :,
-                    self.focus_body_idx,
-                ][:, :, np.newaxis]
-            )
-        scaled_pos = self.scale_pos_array(rel_trail_pos)
+        if self.trail_focus_body_idx is not None:
+            trail_focus_body_pos = self.sim.mm[
+                initial_point : self.frame + 1 : self.trail_step,
+                0:3,
+                self.trail_focus_body_idx,
+            ][:, :, np.newaxis]
+            current_pos = current_pos - trail_focus_body_pos
+        if self.focus_body_idx is not None:
+            focus_body_pos = self.sim.mm[
+                self.frame,
+                0:3,
+                self.focus_body_idx,
+            ][np.newaxis, :, np.newaxis]
+            current_pos = current_pos - focus_body_pos
+        scaled_pos = self.scale_pos_array(current_pos)
         n = scaled_pos.shape[0]
         new_cache[-n:, :, :] = scaled_pos
         new_cache[0:-n, :, :] = np.repeat(
