@@ -9,13 +9,13 @@ pydantic = "*"
 matplotlib = "*"
 project = {file = ".", editable = true}
 scipy = "*"
+setuptools = "<81"
 types-setuptools = "*"
 pygame = "*"
 requests = "*"
 numba = "*"
 
 [dev-packages]
-setuptools = "*"
 black = "*"
 colorama = "*"
 coverage = "*"

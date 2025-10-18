@@ -40,8 +40,27 @@ class Slider:
         pygame.draw.rect(screen, (150, 150, 150), self.handle_rect, 2)
 
         # Draw label and value
+        # Choose unit dynamically: hours (h), days (d), years (a)
+        seconds = self.val
+        if seconds < 3600 * 24:
+            unit = "h"
+            value = seconds / 3600
+            value_str = f"{value:.0f}"
+        elif seconds < 3600 * 24 * 365:
+            unit = "d"
+            value = seconds / (3600 * 24)
+            value_str = f"{value:.1f}" if value < 10 else f"{value:.0f}"
+        else:
+            unit = "a"
+            value = seconds / (3600 * 24 * 365.25)
+            value_str = (
+                f"{value:.2f}"
+                if value < 10
+                else f"{value:.1f}" if value < 100 else f"{value:.0f}"
+            )
+
         label_text = font.render(
-            f"{self.label}: {self.val:.1f}", True, (255, 255, 255)
+            f"{self.label} ({unit}): {value_str}", True, (255, 255, 255)
         )
         screen.blit(label_text, (self.rect.x, self.rect.y - 25))
 
@@ -67,6 +86,12 @@ class Slider:
             )
             self.update_handle_position()
             return True  # Value changed
+
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_r:
+                self.val = 3600.0
+                self.update_handle_position()
+                return True
 
         return False
 
@@ -147,7 +172,7 @@ class Visualization:
             min_val=3600.0,
             max_val=3600.0 * 24 * 10,
             initial_val=self.trail_step_time,
-            label="Trail Step (s)",
+            label="Trail Step",
         )
 
         # Trail time slider (total trail duration in seconds)
@@ -159,7 +184,7 @@ class Visualization:
             min_val=3600.0,
             max_val=3600.0 * 24 * 365.25 * 100,
             initial_val=self.trail_time,
-            label="Trail Length (s)",
+            label="Trail Length",
         )
 
         self.sliders = [trail_step_slider, trail_time_slider]
@@ -172,13 +197,23 @@ class Visualization:
         for slider in self.sliders:
             if slider.label.startswith("Trail Step"):
                 if slider.val != self.trail_step_time:
-                    self.trail_step_time = slider.val
-                    self.trail_step = int(self.trail_step_time / self.sim.dt)
+                    if slider.val <= self.trail_time:
+                        self.trail_step_time = slider.val
+                        self.trail_step = int(
+                            self.trail_step_time / self.sim.dt
+                        )
+                    else:
+                        slider.val = self.trail_time
+                        slider.update_handle_position()
                     trail_step_changed = True
 
             elif slider.label.startswith("Trail Length"):
                 if slider.val != self.trail_time:
-                    self.trail_time = slider.val
+                    if slider.val >= self.trail_step_time:
+                        self.trail_time = slider.val
+                    else:
+                        slider.val = self.trail_step_time
+                        slider.update_handle_position()
                     trail_time_changed = True
 
         # Update trail length if either parameter changed
@@ -290,6 +325,7 @@ class Visualization:
                     self.rotation_x = 0
                     self.rotation_z = 0
                     self.focus_body_idx = None
+                    self.trail_focus_body_idx = None
                     self.speed = 1
                 if event.key == pygame.K_h:
                     self.ui_visible = (self.ui_visible - 1) % 3

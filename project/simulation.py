@@ -32,11 +32,10 @@ class Simulation:
             self.body_list.metadata["epoch"] if self.body_list.metadata else ""
         )
 
-        # Check if GPU is available
-        self.use_gpu = self._check_gpu_availability()
-        print(f"Using {'GPU' if self.use_gpu else 'CPU'} acceleration")
-
         if not os.path.exists(file_traj):
+            # Check if GPU is available
+            self.use_gpu = self._check_gpu_availability()
+            print(f"Using {'GPU' if self.use_gpu else 'CPU'} acceleration")
             print(f"Simulating {time:.2e} seconds...")
             if self.use_gpu:
                 simulate_n_steps_gpu(
