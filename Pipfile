@@ -12,6 +12,7 @@ scipy = "*"
 types-setuptools = "*"
 pygame = "*"
 requests = "*"
+numba = "*"
 
 [dev-packages]
 setuptools = "*"
