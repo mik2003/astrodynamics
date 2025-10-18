@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 
 import numpy as np
+from numba import cuda, float64
 
 from project.data import BodyList
 from project.utilities import A, Dir, append_positions_npy
@@ -23,27 +24,67 @@ class Simulation:
         self.epoch = (
             self.body_list.metadata["epoch"] if self.body_list.metadata else ""
         )
+
+        # Check if GPU is available
+        self.use_gpu = self._check_gpu_availability()
+        print(f"Using {'GPU' if self.use_gpu else 'CPU'} acceleration")
+
         if not os.path.exists(file_traj):
             print(f"Simulating {time:.2e} seconds...")
-            simulate_n_steps(
-                self.body_list, self.steps, dt, file_traj, prnt=True
-            )
+            if self.use_gpu:
+                simulate_n_steps_gpu(
+                    self.body_list, self.steps, dt, file_traj, prnt=True
+                )
+            else:
+                simulate_n_steps_cpu(
+                    self.body_list, self.steps, dt, file_traj, prnt=True
+                )
             print("\nSimulation complete.")
 
-        mm = np.memmap(
+        self.mm = np.memmap(
             file_traj,
             dtype="float64",
             mode="r",
             shape=(self.steps, 9, self.num_bodies),
         )
 
-        self.r = mm[:, 0:3, :]
-        self.v = mm[:, 3:6, :]
+        self.r = self.mm[:, 0:3, :]
+        self.v = self.mm[:, 3:6, :]
+
+    def _check_gpu_availability(self) -> bool:
+        """Check if CUDA GPU is available and has sufficient memory"""
+        try:
+            if not cuda.is_available():
+                print("CUDA is not available. Falling back to CPU.")
+                return False
+
+            # Get first GPU
+            device = cuda.get_current_device()
+            print(f"Found GPU: {device.name}")
+
+            # Check if we have enough memory for basic operations
+            # This is a simple check - you might want to make it more sophisticated
+            free_mem, total_mem = cuda.current_context().get_memory_info()
+            free_mem_gb = free_mem / (1024**3)
+            print(
+                f"GPU memory: {free_mem_gb:.2f} GB free / {total_mem/(1024**3):.2f} GB total"
+            )
+
+            # Require at least 1GB free memory
+            if free_mem_gb < 1.0:
+                print("Insufficient GPU memory. Falling back to CPU.")
+                return False
+
+            return True
+
+        except Exception as e:
+            print(f"GPU check failed: {e}. Falling back to CPU.")
+            return False
 
 
-def a(body_list: BodyList, r: A) -> A:
+def a_cpu(body_list: BodyList, r: A) -> A:
     """
-    Compute accelerations for all bodies at given positions r.
+    Compute accelerations for all bodies at given positions r (CPU version).
     r is shaped (3, N), with each column representing a body's position.
     Returns accelerations in the same shape (3, N).
     """
@@ -84,7 +125,81 @@ def a(body_list: BodyList, r: A) -> A:
     return a_mat
 
 
-def rk4_step(
+@cuda.jit
+def a_gpu_kernel(r, mus, accel, n_bodies):
+    """
+    GPU kernel to compute accelerations for all bodies.
+    Each thread computes acceleration for one body in one dimension.
+    """
+    i = cuda.grid(1)
+
+    if i < n_bodies:
+        # Initialize acceleration for body i
+        accel_x = 0.0
+        accel_y = 0.0
+        accel_z = 0.0
+
+        # Position of body i
+        r_i_x = r[0, i]
+        r_i_y = r[1, i]
+        r_i_z = r[2, i]
+
+        # Compute gravitational influence from all other bodies
+        for j in range(n_bodies):
+            if i != j:  # Skip self-interaction
+                # Position difference
+                dx = r[0, j] - r_i_x
+                dy = r[1, j] - r_i_y
+                dz = r[2, j] - r_i_z
+
+                # Squared distance
+                dist_sq = dx * dx + dy * dy + dz * dz
+
+                # Avoid division by zero
+                if dist_sq > 0.0:
+                    # Distance cubed
+                    dist_cubed = dist_sq * np.sqrt(dist_sq)
+
+                    # Acceleration contribution
+                    factor = mus[j] / dist_cubed
+                    accel_x += dx * factor
+                    accel_y += dy * factor
+                    accel_z += dz * factor
+
+        # Store results
+        accel[0, i] = accel_x
+        accel[1, i] = accel_y
+        accel[2, i] = accel_z
+
+
+def a_gpu(body_list: BodyList, r: A) -> A:
+    """
+    Compute accelerations for all bodies at given positions r (GPU version).
+    r is shaped (3, N), with each column representing a body's position.
+    Returns accelerations in the same shape (3, N).
+    """
+    n_bodies = r.shape[1]
+
+    # Prepare data for GPU
+    mus = np.array([body.mu for body in body_list], dtype=np.float64)
+    r_gpu = cuda.to_device(r.astype(np.float64))
+    mus_gpu = cuda.to_device(mus)
+    accel_gpu = cuda.device_array((3, n_bodies), dtype=np.float64)
+
+    # Configure kernel launch
+    threads_per_block = 256
+    blocks_per_grid = (n_bodies + threads_per_block - 1) // threads_per_block
+
+    # Launch kernel
+    a_gpu_kernel[blocks_per_grid, threads_per_block](
+        r_gpu, mus_gpu, accel_gpu, n_bodies
+    )
+
+    # Copy result back to CPU
+    return accel_gpu.copy_to_host()
+
+
+def rk4_step_cpu(
     body_list: BodyList,
     h: float,
     k_arrays: list,
@@ -95,26 +210,56 @@ def rk4_step(
     k_r1, k_r2, k_r3, k_r4, k_v1, k_v2, k_v3, k_v4 = k_arrays
 
     k_r1[:] = body_list.v_0
-    k_v1[:] = a(body_list, body_list.r_0)
+    k_v1[:] = a_cpu(body_list, body_list.r_0)
 
     buffer[step, 0:3, :] = body_list.r_0
     buffer[step, 3:6, :] = k_r1
     buffer[step, 6:9, :] = k_v1
 
     k_r2[:] = body_list.v_0 + k_v1 * h / 2
-    k_v2[:] = a(body_list, body_list.r_0 + k_r1 * h / 2)
+    k_v2[:] = a_cpu(body_list, body_list.r_0 + k_r1 * h / 2)
 
     k_r3[:] = body_list.v_0 + k_v2 * h / 2
-    k_v3[:] = a(body_list, body_list.r_0 + k_r2 * h / 2)
+    k_v3[:] = a_cpu(body_list, body_list.r_0 + k_r2 * h / 2)
 
     k_r4[:] = body_list.v_0 + k_v3 * h
-    k_v4[:] = a(body_list, body_list.r_0 + k_r3 * h)
+    k_v4[:] = a_cpu(body_list, body_list.r_0 + k_r3 * h)
 
     body_list.r_0 = body_list.r_0 + h / 6 * (k_r1 + 2 * k_r2 + 2 * k_r3 + k_r4)
     body_list.v_0 = body_list.v_0 + h / 6 * (k_v1 + 2 * k_v2 + 2 * k_v3 + k_v4)
 
 
-def simulate_n_steps(
+def rk4_step_gpu(
+    body_list: BodyList,
+    h: float,
+    k_arrays: list,
+    buffer: A,
+    step: int,
+) -> None:
+
+    k_r1, k_r2, k_r3, k_r4, k_v1, k_v2, k_v3, k_v4 = k_arrays
+
+    k_r1[:] = body_list.v_0
+    k_v1[:] = a_gpu(body_list, body_list.r_0)
+
+    buffer[step, 0:3, :] = body_list.r_0
+    buffer[step, 3:6, :] = k_r1
+    buffer[step, 6:9, :] = k_v1
+
+    k_r2[:] = body_list.v_0 + k_v1 * h / 2
+    k_v2[:] = a_gpu(body_list, body_list.r_0 + k_r1 * h / 2)
+
+    k_r3[:] = body_list.v_0 + k_v2 * h / 2
+    k_v3[:] = a_gpu(body_list, body_list.r_0 + k_r2 * h / 2)
+
+    k_r4[:] = body_list.v_0 + k_v3 * h
+    k_v4[:] = a_gpu(body_list, body_list.r_0 + k_r3 * h)
+
+    body_list.r_0 = body_list.r_0 + h / 6 * (k_r1 + 2 * k_r2 + 2 * k_r3 + k_r4)
+    body_list.v_0 = body_list.v_0 + h / 6 * (k_v1 + 2 * k_v2 + 2 * k_v3 + k_v4)
+
+
+def simulate_n_steps_cpu(
     body_list: BodyList,
     n: int,
     dt: float,
@@ -127,7 +272,43 @@ def simulate_n_steps(
     k_arrays = [np.zeros_like(body_list.r_0) for _ in range(8)]
     start_time = time.time()
     for i in range(n):
-        rk4_step(body_list, dt, k_arrays, buffer, i)
+        rk4_step_cpu(body_list, dt, k_arrays, buffer, i)
+        if prnt and i % 1000 == 0:
+            progress = int(i / n * 50)
+            bar = "[" + "#" * progress + "-" * (50 - progress) + "]"
+            elapsed = time.time() - start_time
+            if i > 0:
+                est_total = elapsed / (i / n)
+                est_remain = est_total - elapsed
+                hrs = int(est_remain // 3600)
+                mins = int((est_remain % 3600) // 60)
+                secs = int(est_remain % 60)
+                est_str = f" | ETA: {hrs:02d}:{mins:02d}:{secs:02d}"
+            else:
+                est_str = ""
+            print(f"\rProgress {bar} {i/n*100:.2f}%{est_str}", end="")
+    if prnt:
+        print(
+            "\rProgress [" + "#" * 50 + "] 100.00% | ETA: 00:00:00", end=""
+        )  # Show full bar at the end
+    if filename is not None:
+        append_positions_npy(filename, np.array(buffer))
+
+
+def simulate_n_steps_gpu(
+    body_list: BodyList,
+    n: int,
+    dt: float,
+    filename: Path | None = None,
+    prnt: bool = False,
+) -> None:
+    import time
+
+    buffer = np.zeros((n, 9, len(body_list)))
+    k_arrays = [np.zeros_like(body_list.r_0) for _ in range(8)]
+    start_time = time.time()
+    for i in range(n):
+        rk4_step_gpu(body_list, dt, k_arrays, buffer, i)
         if prnt and i % 1000 == 0:
             progress = int(i / n * 50)
             bar = "[" + "#" * progress + "-" * (50 - progress) + "]"
