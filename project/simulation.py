@@ -48,15 +48,12 @@ class Simulation:
                 )
             print("\nSimulation complete.")
 
-        mm = np.memmap(
+        self.mm = np.memmap(
             file_traj,
             dtype="float64",
             mode="r",
             shape=(self.steps, 9, self.num_bodies),
         )
-
-        self.r = mm[:, 0:3, :]
-        self.v = mm[:, 3:6, :]
 
     def _check_gpu_availability(self) -> bool:
         """Check if CUDA GPU is available and appropriate for this problem size"""
@@ -286,7 +283,7 @@ def simulate_n_steps_cpu(
     start_time = time.time()
     for i in range(n):
         rk4_step_cpu(body_list, dt, k_arrays, buffer, i)
-        if prnt and i % 1000 == 0:
+        if prnt and i % 10000 == 0:
             print_progress(i, n, start_time)
     if prnt:
         print_done()
@@ -308,7 +305,7 @@ def simulate_n_steps_gpu(
     start_time = time.time()
     for i in range(n):
         rk4_step_gpu(body_list, dt, k_arrays, buffer, i)
-        if prnt and i % 1000 == 0:
+        if prnt and i % 10000 == 0:
             print_progress(i, n, start_time)
     if prnt:
         print_done()

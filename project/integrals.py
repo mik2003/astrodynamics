@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from project.simulation import Simulation
-from project.utilities import Dir
+from project.utilities import Dir, print_done, print_progress
 
 G = 6.67430e-11
 
@@ -38,20 +38,8 @@ def calculate_energy(r, v, mu, cache_file: Path | None = None):
     print("Calculating energy...")
 
     for t in range(n_steps):
-        if t % 100 == 0:
-            progress = int(t / n_steps * 50)
-            bar = "[" + "#" * progress + "-" * (50 - progress) + "]"
-            elapsed = time.time() - start_time
-            if t > 0:
-                est_total = elapsed / (t / n_steps)
-                est_remain = est_total - elapsed
-                hrs = int(est_remain // 3600)
-                mins = int((est_remain % 3600) // 60)
-                secs = int(est_remain % 60)
-                est_str = f" | ETA: {hrs:02d}:{mins:02d}:{secs:02d}"
-            else:
-                est_str = ""
-            print(f"\rProgress {bar} {t/n_steps*100:.2f}%{est_str}", end="")
+        if t % 10000 == 0:
+            print_progress(t, n_steps, start_time)
 
         r_i = r[t, :, i_idx].T
         r_j = r[t, :, j_idx].T
@@ -67,7 +55,7 @@ def calculate_energy(r, v, mu, cache_file: Path | None = None):
 
         e_pot[t] = -np.sum(potential_terms)
 
-    print("\rProgress [" + "#" * 50 + "] 100.00% | ETA: 00:00:00")
+    print_done()
     print("Energy calculation complete.")
 
     e_total = e_kin + e_pot
@@ -111,9 +99,9 @@ def calculate_angular_momentum(r, v, mu, cache_file: Path | None = None):
 
 if __name__ == "__main__":
     sim = Simulation(
-        name="sun_earth_moon_2460966",
+        name="solar_system_moons_2460966",
         dt=3600,
-        time=3600 * 24 * 365.25 * 100,
+        time=3600 * 24 * 365.25,
     )
 
     mu_list = [body.mu for body in sim.body_list]
