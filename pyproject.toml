@@ -3,3 +3,7 @@ extension-pkg-allow-list = ["pygame"]
 
 [tool.flake8]
 extend-ignore = ["E203"]
+
+[[tool.mypy.overrides]]
+module = "numba"
+ignore_missing_imports = true

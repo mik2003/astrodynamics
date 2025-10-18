@@ -1,29 +1,37 @@
+# integrals.py
 import time
+from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
 
 from project.simulation import Simulation
+from project.utilities import Dir
 
 G = 6.67430e-11
 
 
-def calculate_energy(r, v, mu):
+def calculate_energy(r, v, mu, cache_file: Path | None = None):
     """
-    Calculate total energy using vectorized operations
-    mu: array of gravitational parameters [m^3/s^2]
+    Calculate total energy using vectorized operations with caching
     """
+    # Check cache first
+    if cache_file and cache_file.exists():
+        print("Loading energy from cache...")
+        mm = np.memmap(
+            cache_file, dtype="float64", mode="r", shape=(r.shape[0],)
+        )
+        return np.array(mm)
+
     n_steps, _, n_bodies = r.shape
 
-    # Calculate kinetic energy: E_kin = 0.5 * sum((mu_i/G) * v_i^2)
-    v_sq = np.sum(v**2, axis=1)  # shape: (n_steps, n_bodies)
-    masses = mu / G  # shape: (n_bodies,)
-    e_kin = 0.5 * np.sum(v_sq * masses, axis=1)  # shape: (n_steps,)
+    # Kinetic energy (fast)
+    v_sq = np.sum(v**2, axis=1)
+    masses = mu / G
+    e_kin = 0.5 * np.sum(v_sq * masses, axis=1)
 
-    # Calculate potential energy using vectorized pairwise distances
+    # Potential energy (slow)
     e_pot = np.zeros(n_steps)
-
-    # Create indices for all unique pairs
     i_idx, j_idx = np.triu_indices(n_bodies, k=1)
 
     start_time = time.time()
@@ -45,23 +53,12 @@ def calculate_energy(r, v, mu):
                 est_str = ""
             print(f"\rProgress {bar} {t/n_steps*100:.2f}%{est_str}", end="")
 
-        # Extract positions and transpose to get (3, n_pairs) shape
-        r_i = r[
-            t, :, i_idx
-        ].T  # shape: (n_pairs, 3) -> transpose to (3, n_pairs)
-        r_j = r[
-            t, :, j_idx
-        ].T  # shape: (n_pairs, 3) -> transpose to (3, n_pairs)
+        r_i = r[t, :, i_idx].T
+        r_j = r[t, :, j_idx].T
+        r_diff = r_i - r_j
+        distances = np.linalg.norm(r_diff, axis=0)
+        mu_pairs = mu[i_idx] * mu[j_idx]
 
-        r_diff = r_i - r_j  # shape: (3, n_pairs)
-
-        # Calculate distances (norm along axis 0)
-        distances = np.linalg.norm(r_diff, axis=0)  # shape: (n_pairs,)
-
-        # Calculate potential energy terms
-        mu_pairs = mu[i_idx] * mu[j_idx]  # shape: (n_pairs,)
-
-        # Calculate potential energy (avoid division by zero)
         with np.errstate(divide="ignore", invalid="ignore"):
             potential_terms = mu_pairs / (G * distances)
             potential_terms = np.nan_to_num(
@@ -70,42 +67,68 @@ def calculate_energy(r, v, mu):
 
         e_pot[t] = -np.sum(potential_terms)
 
-    print(
-        "\rProgress [" + "#" * 50 + "] 100.00% | ETA: 00:00:00"
-    )  # Show full bar at the end
+    print("\rProgress [" + "#" * 50 + "] 100.00% | ETA: 00:00:00")
     print("Energy calculation complete.")
 
-    return e_kin + e_pot
+    e_total = e_kin + e_pot
+
+    # Save to cache
+    if cache_file:
+        print(f"Saving energy to cache: {cache_file}")
+        mm = np.memmap(
+            cache_file, dtype="float64", mode="w+", shape=e_total.shape
+        )
+        mm[:] = e_total[:]
+        mm.flush()
+
+    return e_total
+
+
+def calculate_angular_momentum(r, v, mu, cache_file: Path | None = None):
+    """
+    Calculate angular momentum with caching
+    """
+    if cache_file and cache_file.exists():
+        print("Loading angular momentum from cache...")
+        mm = np.memmap(
+            cache_file, dtype="float64", mode="r", shape=(r.shape[0], 3)
+        )
+        return np.array(mm)
+
+    masses_ = mu / G
+    v_weighted = sim.v * masses_[None, None, :]
+    h = np.sum(np.cross(sim.r, v_weighted, axis=1), axis=2)
+
+    # Save to cache
+    if cache_file:
+        print(f"Saving angular momentum to cache: {cache_file}")
+        mm = np.memmap(cache_file, dtype="float64", mode="w+", shape=h.shape)
+        mm[:] = h[:]
+        mm.flush()
+
+    return h
 
 
 if __name__ == "__main__":
-
     sim = Simulation(
         name="sun_earth_moon_2460966",
-        dt=3600,  # simulation time step (seconds)
-        time=3600 * 24 * 365.25 * 100,  # simulation time (seconds)
+        dt=3600,
+        time=3600 * 24 * 365.25 * 100,
     )
 
-    # Extract gravitational parameters
     mu_list = [body.mu for body in sim.body_list]
     mu_arr = np.array(mu_list)
 
-    # Calculate energy with progress bar
-    e_total = calculate_energy(sim.r, sim.v, mu_arr)
+    # Create cache filenames based on simulation parameters
+    base_name = f"{sim.name}_{sim.dt}_{sim.steps}"
+    energy_cache = Dir.data_dir.joinpath(f"{base_name}_energy.bin")
+    angular_cache = Dir.data_dir.joinpath(f"{base_name}_angular.bin")
 
-    # Optimized angular momentum calculation
-    # r shape: (steps, 3, num_bodies), v shape: (steps, 3, num_bodies)
-    # We need to multiply v by mass (mu/G) for each body
-    masses_ = mu_arr / G  # shape: (num_bodies,)
-    v_weighted = (
-        sim.v * masses_[None, None, :]
-    )  # Broadcast masses across time and coordinates
+    # Calculate with caching
+    e_total = calculate_energy(sim.r, sim.v, mu_arr, energy_cache)
+    h = calculate_angular_momentum(sim.r, sim.v, mu_arr, angular_cache)
 
-    # Calculate angular momentum: h = sum(r × (m*v))
-    # for all bodies at each time step
-    h = np.sum(
-        np.cross(sim.r, v_weighted, axis=1), axis=2
-    )  # shape: (steps, 3)
+    # Rest of plotting code remains the same...
     h_0 = h[0, 2]
 
     # Plotting

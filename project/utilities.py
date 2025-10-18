@@ -1,5 +1,6 @@
 import os
 import pathlib
+import time
 from datetime import datetime
 from typing import List
 
@@ -81,3 +82,25 @@ def datetime_to_jd(dt: datetime) -> float:
     )
 
     return jd_day + fractional_day
+
+
+def print_progress(i: int, n: int, start_time: float):
+    progress = int(i / n * 50)
+    bar = "[" + "#" * progress + "-" * (50 - progress) + "]"
+    elapsed = time.time() - start_time
+    if i > 0:
+        est_total = elapsed / i * n
+        est_remain = est_total - elapsed
+        hrs = int(est_remain // 3600)
+        mins = int((est_remain % 3600) // 60)
+        secs = int(est_remain % 60)
+        est_str = f" | ETA: {hrs:02d}:{mins:02d}:{secs:02d}"
+    else:
+        est_str = ""
+    print(f"\rProgress {bar} {i/n*100:.2f}%{est_str}", end="")
+
+
+def print_done() -> None:
+    print(
+        "\rProgress [" + "#" * 50 + "] 100.00% | ETA: 00:00:00", end=""
+    )  # Show full bar at the end

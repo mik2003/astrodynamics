@@ -2,8 +2,8 @@ import json
 import pathlib
 import re
 import time
-from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional, Tuple
+from datetime import UTC, datetime, timedelta
+from typing import Any, Dict, List, Optional, Tuple, TypedDict
 
 import requests
 
@@ -100,6 +100,122 @@ STANDARD_MU = {
 }
 
 
+class TargetBodies:
+    # Basic configurations
+    sun_earth_moon = [
+        "Sun",
+        "Earth",
+        "Moon",
+    ]
+
+    inner_solar_system = [
+        "Sun",
+        "Mercury",
+        "Venus",
+        "Earth",
+        "Mars",
+    ]
+
+    inner_solar_system_jupiter = [
+        "Sun",
+        "Mercury",
+        "Venus",
+        "Earth",
+        "Moon",
+        "Mars",
+        "Jupiter",
+    ]
+
+    # Main planets (traditional solar system)
+    solar_system = [
+        "Sun",
+        "Mercury",
+        "Venus",
+        "Earth",
+        "Mars",
+        "Jupiter",
+        "Saturn",
+        "Uranus",
+        "Neptune",
+    ]
+
+    # Main planets + dwarf planets
+    solar_system_dwarf = [
+        "Sun",
+        "Mercury",
+        "Venus",
+        "Earth",
+        "Mars",
+        "Jupiter",
+        "Saturn",
+        "Uranus",
+        "Neptune",
+        "Pluto",
+        "Ceres",
+        "Eris",
+        "Haumea",
+        "Makemake",
+    ]
+
+    # Main planets + major moons
+    solar_system_moons = [
+        "Sun",
+        "Mercury",
+        "Venus",
+        "Earth",
+        "Moon",
+        "Mars",
+        # Jupiter system
+        "Jupiter",
+        "Io",
+        "Europa",
+        "Ganymede",
+        "Callisto",
+        # Saturn system
+        "Saturn",
+        "Mimas",
+        "Enceladus",
+        "Tethys",
+        "Dione",
+        "Rhea",
+        "Titan",
+        "Iapetus",
+        # Uranus system
+        "Uranus",
+        "Miranda",
+        "Ariel",
+        "Umbriel",
+        "Titania",
+        "Oberon",
+        # Neptune system
+        "Neptune",
+        "Triton",
+        "Proteus",
+        # Dwarf planets
+        "Pluto",
+        "Charon",
+        "Ceres",
+        "Eris",
+        "Haumea",
+        "Makemake",
+    ]
+
+
+class HorizonsRequestParams(TypedDict, total=False):
+    format_: str
+    command: Optional[str]
+    obj_data: bool
+    make_ephem: bool
+    ephem_type: str
+    center: str
+    email_addr: Optional[str]
+    start_time: Optional[str]
+    stop_time: Optional[str]
+    step_size: str
+    max_retries: int
+    retry_delay: int
+
+
 def horizons_request(
     format_: str = "json",
     command: Optional[str] = None,
@@ -108,9 +224,9 @@ def horizons_request(
     ephem_type: str = "VECTORS",
     center: str = "@0",  # Solar System Barycenter
     email_addr: Optional[str] = None,
-    start_time: Optional[str] = None,  # ADD THIS
-    stop_time: Optional[str] = None,  # ADD THIS
-    step_size: str = "1d",  # ADD THIS
+    start_time: Optional[str] = None,
+    stop_time: Optional[str] = None,
+    step_size: str = "1d",
     max_retries: int = 3,
     retry_delay: int = 5,
 ) -> requests.Response:
@@ -160,14 +276,14 @@ def horizons_request(
         try:
             print("📤 SENDING REQUEST...")
             print(f"   URL: {base_url}")
-            print(f"   Method: GET")
-            print(f"   Timeout: 30 seconds")
+            print("   Method: GET")
+            print("   Timeout: 30 seconds")
 
-            start_time = time.time()
+            _start_time = time.time()
             response = requests.get(base_url, params=params, timeout=30)
-            elapsed_time = time.time() - start_time
+            elapsed_time = time.time() - _start_time
 
-            print(f"✅ REQUEST COMPLETED")
+            print("✅ REQUEST COMPLETED")
             print(f"   Status Code: {response.status_code}")
             print(f"   Response Time: {elapsed_time:.2f} seconds")
             print(f"   Content Length: {len(response.text)} bytes")
@@ -200,9 +316,9 @@ def horizons_request(
                 time.sleep(wait_time)
             else:
                 print("💥 MAX RETRIES REACHED - Connection failed")
-                raise Exception(
+                raise requests.exceptions.ConnectionError(
                     f"Failed after {max_retries} connection attempts: {e}"
-                )
+                ) from e
 
         except requests.exceptions.HTTPError as e:
             print(f"❌ HTTP ERROR: {e}")
@@ -217,16 +333,16 @@ def horizons_request(
             print(f"📊 Response headers: {dict(e.response.headers)}")
             raise e
 
-        except requests.exceptions.Timeout:
+        except requests.exceptions.Timeout as e:
             print("⏰ REQUEST TIMEOUT - No response after 30 seconds")
             if attempt < max_retries - 1:
                 wait_time = retry_delay * (2**attempt)
                 print(f"⏳ Waiting {wait_time} seconds before retry...")
                 time.sleep(wait_time)
             else:
-                raise Exception(
+                raise requests.exceptions.Timeout(
                     f"Request timed out after {max_retries} attempts"
-                )
+                ) from e
 
         except requests.exceptions.RequestException as e:
             print(f"❌ REQUEST EXCEPTION: {e}")
@@ -235,11 +351,13 @@ def horizons_request(
                 print(f"⏳ Waiting {wait_time} seconds before retry...")
                 time.sleep(wait_time)
             else:
-                raise Exception(
+                raise requests.exceptions.RequestException(
                     f"Request failed after {max_retries} attempts: {e}"
-                )
+                ) from e
 
-    raise Exception(f"All {max_retries} attempts failed")
+    raise requests.exceptions.RequestException(
+        f"All {max_retries} attempts failed"
+    )
 
 
 def safe_json_parse(response_text: str):
@@ -278,12 +396,12 @@ def safe_json_parse(response_text: str):
 
     except json.JSONDecodeError as e:
         print(f"❌ JSON PARSE FAILED: {e}")
-        print(f"📄 Response preview (first 500 chars):")
+        print("📄 Response preview (first 500 chars):")
         print(response_text[:500])
         raise e
 
 
-def extract_gravitational_parameter(result_text: str) -> float:
+def extract_gravitational_parameter(result_text: str) -> float | None:
     """
     Extract GM (gravitational parameter) from Horizons result text.
     Returns value in m^3/s^2.
@@ -323,7 +441,7 @@ def extract_ephemeris_data(
     soe_match = re.search(r"\$\$SOE(.*?)\$\$EOE", result_text, re.DOTALL)
 
     if not soe_match:
-        print(f"   ❌ No SOE/EOE markers found in response")
+        print("   ❌ No SOE/EOE markers found in response")
         # Check if there's an error message in the result
         error_match = re.search(r"Error:\s*(.*)", result_text)
         if error_match:
@@ -346,7 +464,7 @@ def extract_ephemeris_data(
     )
 
     if not first_record_match:
-        print(f"   ❌ Could not parse vector data from ephemeris")
+        print("   ❌ Could not parse vector data from ephemeris")
         print(f"   📄 First 500 chars of ephemeris: {ephemeris_text[:500]}...")
         raise ValueError("Could not parse ephemeris vectors")
 
@@ -376,8 +494,8 @@ def extract_ephemeris_data(
 def fetch_body_data(
     body_name: str,
     center_body: str = "@0",
-    epoch: str = None,
-    email_addr: str = None,
+    epoch: str | None = None,
+    email_addr: str | None = None,
 ) -> Dict[str, Any]:
     """
     Fetch data for a single body from Horizons API.
@@ -411,7 +529,7 @@ def fetch_body_data(
         step_size = "1h"
 
     # Build request parameters
-    request_params = {
+    request_params: HorizonsRequestParams = {
         "command": body_id,
         "center": center_body,
         "email_addr": email_addr,
@@ -476,9 +594,9 @@ def fetch_body_data(
 def create_solar_system_data(
     target_bodies: List[str],
     center_body: str = "@0",
-    epoch: str = None,
+    epoch: str | None = None,
     output_filename: str = "solar_system_data",
-    email_addr: str = None,
+    email_addr: str | None = None,
     use_existing: bool = True,
 ) -> Dict[str, Any]:
     """
@@ -510,7 +628,7 @@ def create_solar_system_data(
             )
             body_list.append(body_data)
             print(f"✅ Successfully processed {body_name}")
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-exception-caught
             print(f"❌ Failed to process {body_name}: {e}")
             import traceback
 
@@ -518,13 +636,13 @@ def create_solar_system_data(
             continue
 
     if not body_list:
-        raise Exception(
+        raise ValueError(
             "No bodies were successfully processed. Check the errors above."
         )
 
     result_data = {
         "metadata": {
-            "generated_utc": datetime.utcnow().isoformat(),
+            "generated_utc": datetime.now(UTC).isoformat(),
             "center_body": center_body,
             "epoch": epoch if epoch else "current",
             "target_count": len(body_list),
@@ -535,7 +653,7 @@ def create_solar_system_data(
     # Save to file
     file_path = save_horizons_data(result_data, output_filename, epoch=epoch)
 
-    print(f"\n🎉 SOLAR SYSTEM DATA GENERATION COMPLETE")
+    print("\n🎉 SOLAR SYSTEM DATA GENERATION COMPLETE")
     print(f"📊 Bodies processed: {len(body_list)}/{len(target_bodies)}")
     print(f"💾 Output file: {file_path}")
 
@@ -545,8 +663,8 @@ def create_solar_system_data(
 def save_horizons_data(
     data: Dict[str, Any],
     filename: str,
-    epoch: str = None,
-    data_dir: pathlib.Path = None,
+    epoch: str | None = None,
+    data_dir: pathlib.Path | None = None,
     backup_existing: bool = True,
 ) -> pathlib.Path:
     """
@@ -580,7 +698,7 @@ def save_horizons_data(
 
 
 def load_horizons_data(
-    filename: str, data_dir: pathlib.Path = None
+    filename: pathlib.Path, data_dir: pathlib.Path | None = None
 ) -> Dict[str, Any]:
     """
     Load NASA Horizons JSON data from file.
@@ -608,7 +726,7 @@ def load_horizons_data(
 
 
 def get_latest_horizons_file(
-    base_filename: str, data_dir: pathlib.Path = None
+    base_filename: str, data_dir: pathlib.Path | None = None
 ) -> Optional[pathlib.Path]:
     """
     Find the most recent timestamped file for a given base filename.
@@ -628,16 +746,12 @@ def get_latest_horizons_file(
 
 
 if __name__ == "__main__":
-    # Full solar system including all planets and major dwarf planets
-    full_solar_system = create_solar_system_data(
-        target_bodies=[
-            "Sun",
-            "Earth",
-            "Moon",
-        ],
+    target = "solar_system_moons"
+    create_solar_system_data(
+        target_bodies=getattr(TargetBodies, target),
         center_body="@0",  # Solar System Barycenter
         epoch="2025-10-17 12:00:00",
-        output_filename="sun_earth_moon",
-        email_addr="michelangelosecondo+horizons@gmail.com",  # Replace with your actual email
+        output_filename=target,
+        email_addr="michelangelosecondo+horizons@gmail.com",
         use_existing=False,  # Set to True after first run to use cached data
     )
