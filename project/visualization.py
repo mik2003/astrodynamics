@@ -47,10 +47,14 @@ class Slider:
 
     def handle_event(self, event):
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-            if self.handle_rect.collidepoint(event.pos):
+            if self.rect.collidepoint(event.pos):
                 self.dragging = True
 
-        elif event.type == pygame.MOUSEBUTTONUP and event.button == 1:
+        elif (
+            self.dragging
+            and event.type == pygame.MOUSEBUTTONUP
+            and event.button == 1
+        ):
             self.dragging = False
 
         elif event.type == pygame.MOUSEMOTION and self.dragging:
@@ -101,8 +105,12 @@ class Visualization:
         self._scale = scale
         self.scale = self._scale
 
+        self._width = width
+        self._height = height
         self.width = width
         self.height = height
+        self.fullscreen = False
+        self.screen_info: pygame.display._VidInfo
 
         self.frame = 0
         self.running = True
@@ -112,7 +120,7 @@ class Visualization:
         self.trail_focus_body_idx: int | None = None  # Index of trail focus
         self.trail_cache_focus: int | None = None  # Last focus used for cache
         self.trail_cache_frame = 0  # Last self.frame used for cache
-        self.cache_needs_update = False
+        self.cache_needs_update = True
 
         self.screen: pygame.Surface
         self.clock: pygame.time.Clock
@@ -136,8 +144,8 @@ class Visualization:
             start_y,
             slider_width,
             slider_height,
-            min_val=0.1,
-            max_val=100.0,
+            min_val=3600.0,
+            max_val=3600.0 * 24 * 10,
             initial_val=self.trail_step_time,
             label="Trail Step (s)",
         )
@@ -148,8 +156,8 @@ class Visualization:
             start_y + 50,
             slider_width,
             slider_height,
-            min_val=10.0,
-            max_val=10000.0,
+            min_val=3600.0,
+            max_val=3600.0 * 24 * 365.25 * 100,
             initial_val=self.trail_time,
             label="Trail Length (s)",
         )
@@ -183,6 +191,7 @@ class Visualization:
         self.screen = pygame.display.set_mode(
             (self.width, self.height), pygame.RESIZABLE
         )
+        self.screen_info = pygame.display.Info()
         pygame.display.set_caption("Astrodynamics Simulation")
         self.clock = pygame.time.Clock()
 
@@ -260,13 +269,21 @@ class Visualization:
                 self.screen = pygame.display.set_mode(
                     (self.width, self.height), pygame.RESIZABLE
                 )
+                self.cache_needs_update = True
                 self.create_sliders()  # Recreate sliders with new dimensions
             elif event.type == pygame.MOUSEWHEEL:
                 if event.y > 0:
                     self.scale *= 1.05
                 elif event.y < 0:
                     self.scale /= 1.05
+                self.cache_needs_update = True
             elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_F11:
+                    self.fullscreen = not self.fullscreen
+                    self.update_fullscreen()
+                if event.key == pygame.K_ESCAPE and self.fullscreen:
+                    self.fullscreen = False
+                    self.update_fullscreen()
                 if event.key == pygame.K_r:
                     self.frame = 0
                     self.scale = self._scale
@@ -276,9 +293,10 @@ class Visualization:
                     self.speed = 1
                 if event.key == pygame.K_h:
                     self.ui_visible = (self.ui_visible - 1) % 3
+                self.cache_needs_update = True
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 mouse_x, mouse_y = event.pos
-                body_clicked = False
+                # body_clicked = False
 
                 for i in range(self.sim.num_bodies):
                     body_x, body_y = self.trail_cache[-1, :2, i]
@@ -286,7 +304,7 @@ class Visualization:
                         abs(mouse_x - body_x) < 10
                         and abs(mouse_y - body_y) < 10
                     ):
-                        body_clicked = True
+                        # body_clicked = True
 
                         if self.focus_body_idx != i:
                             # First click on a different body
@@ -296,25 +314,48 @@ class Visualization:
                             self.trail_focus_body_idx = i
                         break
 
-                # Only reset if no body was clicked
-                if not body_clicked:
-                    if self.trail_focus_body_idx is not None:
-                        # First click in empty space
-                        self.trail_focus_body_idx = None
-                    else:
-                        # Second click in empty space
-                        self.focus_body_idx = None
+                # # Only reset if no body was clicked
+                # if not body_clicked:
+                #     if self.trail_focus_body_idx is not None:
+                #         # First click in empty space
+                #         self.trail_focus_body_idx = None
+                #     else:
+                #         # Second click in empty space
+                #         self.focus_body_idx = None
+
+                self.cache_needs_update = True
 
             # Handle events for sliders
             for slider in self.sliders:
                 if slider.handle_event(event):
                     slider_changed = True
 
-            self.cache_needs_update = True
-
         # Update trail parameters if sliders changed
         if slider_changed:
             self.update_trail_parameters()
+            self.cache_needs_update = True
+
+    def update_fullscreen(self):
+        if self.fullscreen:
+            if (self.screen.get_flags() & pygame.FULLSCREEN) == 0:
+                # Update dimensions to match fullscreen
+                self.width = self.screen_info.current_w
+                self.height = self.screen_info.current_h
+                self.screen = pygame.display.set_mode(
+                    (self.width, self.height),
+                    pygame.FULLSCREEN,
+                )
+        else:
+            if (self.screen.get_flags() & pygame.FULLSCREEN) != 0:
+                # Restore original window size
+                self.width = self._width
+                self.height = self._height
+                self.screen = pygame.display.set_mode(
+                    (self.width, self.height), pygame.RESIZABLE
+                )
+
+        # Recreate sliders to fit new screen size
+        self.create_sliders()
 
     def draw_frame(self) -> None:
         self.screen.fill(VisC.black)
@@ -485,22 +526,25 @@ class Visualization:
         return int(center[0] + x_rot * scale), int(center[1] - y_tilt * scale)
 
     def update_trail_cache(self) -> None:
-        new_cache = np.roll(self.trail_cache, -1, axis=0)
-        current_pos = self.sim.mm[self.frame, 0:3, :][np.newaxis, :, :]
-        if self.trail_focus_body_idx is not None:
-            pos_diff = self.sim.mm[self.frame, 0:3, self.trail_focus_body_idx][
-                np.newaxis, :, np.newaxis
-            ]
-            current_pos = current_pos - pos_diff
-        if self.focus_body_idx is not None:
-            pos_diff = current_pos[-1, :, self.focus_body_idx][
-                np.newaxis, :, np.newaxis
-            ]
-            current_pos = current_pos - pos_diff
-        scaled_pos = self.scale_pos_array(current_pos)
-        new_cache[-1, :, :] = scaled_pos
+        if self.trail_focus_body_idx != self.focus_body_idx:
+            self.rebuild_trail_cache()
+        else:
+            new_cache = np.roll(self.trail_cache, -1, axis=0)
+            current_pos = self.sim.mm[self.frame, 0:3, :][np.newaxis, :, :]
+            if self.trail_focus_body_idx is not None:
+                pos_diff = self.sim.mm[
+                    self.frame, 0:3, self.trail_focus_body_idx
+                ][np.newaxis, :, np.newaxis]
+                current_pos = current_pos - pos_diff
+            if self.focus_body_idx is not None:
+                pos_diff = current_pos[-1, :, self.focus_body_idx][
+                    np.newaxis, :, np.newaxis
+                ]
+                current_pos = current_pos - pos_diff
+            scaled_pos = self.scale_pos_array(current_pos)
+            new_cache[-1, :, :] = scaled_pos
 
-        self.trail_cache = new_cache
+            self.trail_cache = new_cache
 
     def rebuild_trail_cache(self) -> None:
         new_cache = np.empty((self.trail_length, 3, self.sim.num_bodies))
@@ -533,6 +577,7 @@ class Visualization:
             axis=0,
         )
         self.trail_cache = new_cache
+        self.cache_needs_update = False
 
     def is_on_screen(self, pos, margin=100) -> bool:
         return (
