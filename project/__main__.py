@@ -11,7 +11,7 @@ if __name__ == "__main__":
     )
     vis = Visualization(
         sim=sim,
-        trail_step_time=3600 * 24,  # [s]
+        trail_step_time=3600 * 24 * 2,  # [s]
         trail_time=3600 * 24 * 365.25 * 100,  # [s]
     )
     vis.start()

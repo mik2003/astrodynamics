@@ -221,7 +221,9 @@ class Visualization:
             if self.is_on_screen(screen_pos_i):
                 if self.trail_cache.shape[0] > 1:
                     lines_list = list(map(tuple, self.trail_cache[:, 0:2, i]))
-                    pygame.draw.lines(self.screen, color, False, lines_list, 1)
+                    pygame.draw.aalines(
+                        self.screen, color, False, lines_list, 1
+                    )
                 # Draw current position
                 pygame.draw.circle(self.screen, color, screen_pos_i, 3)
                 if self.sim.body_list[i].name:
