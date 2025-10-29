@@ -1,6 +1,7 @@
 import os
 import pathlib
 import time
+from dataclasses import dataclass
 from datetime import datetime
 from typing import List
 
@@ -8,6 +9,17 @@ import numpy as np
 import numpy.typing as npt
 
 A = npt.NDArray[np.float64]
+
+
+@dataclass(frozen=True)
+class T:
+    """Time in [s]"""
+
+    s = 1
+    m = 60
+    h = 3600
+    d = 86400
+    a = 31557600
 
 
 def camel_to_snake(name: str) -> str:

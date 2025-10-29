@@ -28,9 +28,10 @@ class Simulation:
         # Run simulation first and save trajectory with progress tracker
         self.body_list = BodyList.load(file_in)
         self.num_bodies = len(self.body_list)
-        self.epoch = (
-            self.body_list.metadata["epoch"] if self.body_list.metadata else ""
-        )
+        if self.body_list.metadata and "epoch" in self.body_list.metadata:
+            self.epoch = self.body_list.metadata["epoch"]
+        else:
+            self.epoch = ""
 
         if not os.path.exists(file_traj):
             # Check if GPU is available

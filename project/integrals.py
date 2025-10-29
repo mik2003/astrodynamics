@@ -11,7 +11,7 @@ from project.utilities import Dir, print_done, print_progress
 G = 6.67430e-11
 
 
-def calculate_energy(r, v, mu, cache_file: Path | None = None):
+def calculate_energy(mm, mu, cache_file: Path | None = None):
     """
     Calculate total energy using vectorized operations with caching
     """
@@ -19,14 +19,14 @@ def calculate_energy(r, v, mu, cache_file: Path | None = None):
     if cache_file and cache_file.exists():
         print("Loading energy from cache...")
         mm = np.memmap(
-            cache_file, dtype="float64", mode="r", shape=(r.shape[0],)
+            cache_file, dtype="float64", mode="r", shape=(mm.shape[0],)
         )
         return np.array(mm)
 
-    n_steps, _, n_bodies = r.shape
+    n_steps, _, n_bodies = mm.shape
 
     # Kinetic energy (fast)
-    v_sq = np.sum(v**2, axis=1)
+    v_sq = np.sum(mm[:, 3:6, :] ** 2, axis=1)
     masses = mu / G
     e_kin = 0.5 * np.sum(v_sq * masses, axis=1)
 
@@ -41,8 +41,8 @@ def calculate_energy(r, v, mu, cache_file: Path | None = None):
         if t % 10000 == 0:
             print_progress(t, n_steps, start_time)
 
-        r_i = r[t, :, i_idx].T
-        r_j = r[t, :, j_idx].T
+        r_i = mm[t, 0:3, i_idx].T
+        r_j = mm[t, 0:3, j_idx].T
         r_diff = r_i - r_j
         distances = np.linalg.norm(r_diff, axis=0)
         mu_pairs = mu[i_idx] * mu[j_idx]
@@ -72,27 +72,27 @@ def calculate_energy(r, v, mu, cache_file: Path | None = None):
     return e_total
 
 
-def calculate_angular_momentum(r, v, mu, cache_file: Path | None = None):
+def calculate_angular_momentum(mm, mu, cache_file: Path | None = None):
     """
     Calculate angular momentum with caching
     """
     if cache_file and cache_file.exists():
         print("Loading angular momentum from cache...")
-        mm = np.memmap(
-            cache_file, dtype="float64", mode="r", shape=(r.shape[0], 3)
+        mm_ = np.memmap(
+            cache_file, dtype="float64", mode="r", shape=(mm.shape[0], 3)
         )
-        return np.array(mm)
+        return np.array(mm_)
 
     masses_ = mu / G
-    v_weighted = sim.v * masses_[None, None, :]
-    h = np.sum(np.cross(sim.r, v_weighted, axis=1), axis=2)
+    v_weighted = mm[:, 3:6, :] * masses_[None, None, :]
+    h = np.sum(np.cross(mm[:, 0:3, :], v_weighted, axis=1), axis=2)
 
     # Save to cache
     if cache_file:
         print(f"Saving angular momentum to cache: {cache_file}")
-        mm = np.memmap(cache_file, dtype="float64", mode="w+", shape=h.shape)
-        mm[:] = h[:]
-        mm.flush()
+        mm_ = np.memmap(cache_file, dtype="float64", mode="w+", shape=h.shape)
+        mm_[:] = h[:]
+        mm_.flush()
 
     return h
 
@@ -101,7 +101,7 @@ if __name__ == "__main__":
     sim = Simulation(
         name="solar_system_moons_2460966",
         dt=3600,
-        time=3600 * 24 * 365.25,
+        time=3600 * 24 * 365.25 * 100,
     )
 
     mu_list = [body.mu for body in sim.body_list]
@@ -113,8 +113,8 @@ if __name__ == "__main__":
     angular_cache = Dir.data_dir.joinpath(f"{base_name}_angular.bin")
 
     # Calculate with caching
-    e_total = calculate_energy(sim.r, sim.v, mu_arr, energy_cache)
-    h = calculate_angular_momentum(sim.r, sim.v, mu_arr, angular_cache)
+    e_total = calculate_energy(sim.mm, mu_arr, energy_cache)
+    h = calculate_angular_momentum(sim.mm, mu_arr, angular_cache)
 
     # Rest of plotting code remains the same...
     h_0 = h[0, 2]

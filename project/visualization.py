@@ -1,5 +1,6 @@
 import sys
 import time
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import List
 
@@ -8,6 +9,7 @@ import pygame
 
 from project.data import A
 from project.simulation import Simulation
+from project.utilities import T
 
 
 class Slider:
@@ -43,17 +45,17 @@ class Slider:
         # Draw label and value
         # Choose unit dynamically: hours (h), days (d), years (a)
         seconds = self.val
-        if seconds < 3600 * 24:
+        if seconds < T.d:
             unit = "h"
-            value = seconds / 3600
+            value = seconds / T.h
             value_str = f"{value:.0f}"
-        elif seconds < 3600 * 24 * 365:
+        elif seconds < T.a:
             unit = "d"
-            value = seconds / (3600 * 24)
+            value = seconds / T.d
             value_str = f"{value:.1f}" if value < 10 else f"{value:.0f}"
         else:
             unit = "a"
-            value = seconds / (3600 * 24 * 365.25)
+            value = seconds / T.a
             value_str = (
                 f"{value:.2f}"
                 if value < 10
@@ -90,7 +92,7 @@ class Slider:
 
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_r:
-                self.val = 3600.0
+                self.val = T.h
                 self.update_handle_position()
                 return True
 
@@ -103,38 +105,47 @@ class VisC:
     colors = [(255, 215, 0), (0, 191, 255), (220, 20, 60), (34, 139, 34)]
 
 
+@dataclass(frozen=True)
+class VisualizationConstants:
+    width = 800  # [px]
+    height = 600  # [px]
+    scale = 1e-9  # [?]
+    trail_step_time = T.d  # [s]
+    trail_length_time = T.a  # [s]
+    speed = 1.0  # Playback speed [days\s]
+    rotation_z = 0.0  # Rotation in-plane [rad]
+    rotation_x = 0.0  # Rotation out-of-plane [rad]
+
+
+@dataclass
+class VisualizationState:
+    rebuild_trail_cache = True
+    rebuild_relative_trail_cache = True
+
+
 class Visualization:
     def __init__(
         self,
         sim: Simulation,
-        trail_step_time: float,
-        trail_time: float,
-        scale: float = 1e-9,
-        width: int = 800,
-        height: int = 600,
     ) -> None:
+        self.const = VisualizationConstants()
+        self.state = VisualizationState()
+
         self.sim = sim
 
-        self.trail_step_time = trail_step_time  # Store the time value
-        self.trail_time = trail_time  # Store the time value
+        self.trail_step_time = self.const.trail_step_time
+        self.trail_length_time = self.const.trail_length_time
 
-        self.trail_step = int(
-            trail_step_time / self.sim.dt
-        )  # Step between trail points
-        self.trail_length = int(
-            trail_time / trail_step_time
-        )  # Number of positions to keep in trail
+        self.trail_step = self.calculate_trail_step()
+        self.trail_length = self.calculate_trail_length()
 
         self.speed = 1.0  # Playback speed [days\s]
         self.rotation_z = 0.0  # Rotation in-plane [rad]
         self.rotation_x = 0.0  # Rotation out-of-plane [rad]
-        self._scale = scale
-        self.scale = self._scale
+        self.scale = self.const.scale
 
-        self._width = width
-        self._height = height
-        self.width = width
-        self.height = height
+        self.width = self.const.width
+        self.height = self.const.height
         self.fullscreen = False
         self.screen_info: pygame.display._VidInfo
 
@@ -145,11 +156,11 @@ class Visualization:
         self.running = True
 
         self.trail_cache: A
+        self.relative_trail_cache: A
         self.focus_body_idx: int | None = None  # Index of the focused body
         self.trail_focus_body_idx: int | None = None  # Index of trail focus
         self.trail_cache_focus: int | None = None  # Last focus used for cache
-        self.trail_cache_frame = 0  # Last self.frame used for cache
-        self.cache_needs_update = True
+        self.trail_cache_frame = 0  # frames from last trail point
 
         self.screen: pygame.Surface
         self.clock: pygame.time.Clock
@@ -159,6 +170,16 @@ class Visualization:
         # Add sliders
         self.sliders: List[Slider] = []
         self.ui_visible: int = 2
+
+    def calculate_trail_step(self) -> int:
+        return max(
+            1, int(self.trail_step_time / self.sim.dt)
+        )  # Step between trail points, at least 1
+
+    def calculate_trail_length(self) -> int:
+        return int(
+            self.trail_length_time / self.trail_step_time
+        )  # Number of positions to keep in trail
 
     def create_sliders(self):
         """Create sliders for trail parameters"""
@@ -173,8 +194,8 @@ class Visualization:
             start_y,
             slider_width,
             slider_height,
-            min_val=3600.0,
-            max_val=3600.0 * 24 * 10,
+            min_val=1,
+            max_val=max(1.0, self.trail_step_time * 10),
             initial_val=self.trail_step_time,
             label="Trail Step",
         )
@@ -185,9 +206,9 @@ class Visualization:
             start_y + 50,
             slider_width,
             slider_height,
-            min_val=3600.0,
-            max_val=3600.0 * 24 * 365.25 * 100,
-            initial_val=self.trail_time,
+            min_val=1,
+            max_val=max(1.0, self.trail_length_time * 10),
+            initial_val=self.trail_length_time,
             label="Trail Length",
         )
 
@@ -201,20 +222,18 @@ class Visualization:
         for slider in self.sliders:
             if slider.label.startswith("Trail Step"):
                 if slider.val != self.trail_step_time:
-                    if slider.val <= self.trail_time:
+                    if slider.val <= self.trail_length_time:
                         self.trail_step_time = slider.val
-                        self.trail_step = int(
-                            self.trail_step_time / self.sim.dt
-                        )
+                        self.trail_step = self.calculate_trail_step()
                     else:
-                        slider.val = self.trail_time
+                        slider.val = self.trail_length_time
                         slider.update_handle_position()
                     trail_step_changed = True
 
             elif slider.label.startswith("Trail Length"):
-                if slider.val != self.trail_time:
+                if slider.val != self.trail_length_time:
                     if slider.val >= self.trail_step_time:
-                        self.trail_time = slider.val
+                        self.trail_length_time = slider.val
                     else:
                         slider.val = self.trail_step_time
                         slider.update_handle_position()
@@ -222,8 +241,9 @@ class Visualization:
 
         # Update trail length if either parameter changed
         if trail_step_changed or trail_time_changed:
-            self.trail_length = int(self.trail_time / self.trail_step_time)
-            self.cache_needs_update = True
+            self.trail_length = self.calculate_trail_length()
+            self.state.rebuild_relative_trail_cache = True
+            self.state.rebuild_trail_cache = True
 
     def start(self) -> None:
         pygame.init()
@@ -241,11 +261,6 @@ class Visualization:
         while self.running:
             self.handle_input()
             self.advance_frame()
-
-            if self.cache_needs_update:
-                self.rebuild_trail_cache()
-            self.update_trail_cache()
-
             self.draw_frame()
             self.draw_info()
 
@@ -257,31 +272,29 @@ class Visualization:
         keys = pygame.key.get_pressed()
         if keys[pygame.K_RIGHT]:
             self.speed *= 1.01
-            self.cache_needs_update = True
         if keys[pygame.K_LEFT]:
             self.speed /= 1.01
-            self.cache_needs_update = True
 
         if keys[pygame.K_UP]:
             self.scale *= 1.01
-            self.cache_needs_update = True
+            self.state.rebuild_trail_cache = True
         if keys[pygame.K_DOWN]:
             self.scale /= 1.01
-            self.cache_needs_update = True
+            self.state.rebuild_trail_cache = True
 
         # Rotate view left/right (Z axis) and tilt up/down (X axis)
         if keys[pygame.K_d]:
             self.rotation_z -= 0.02  # radians per frame
-            self.cache_needs_update = True
+            self.state.rebuild_trail_cache = True
         if keys[pygame.K_a]:
             self.rotation_z += 0.02
-            self.cache_needs_update = True
+            self.state.rebuild_trail_cache = True
         if keys[pygame.K_w]:
             self.rotation_x -= 0.02
-            self.cache_needs_update = True
+            self.state.rebuild_trail_cache = True
         if keys[pygame.K_s]:
             self.rotation_x += 0.02
-            self.cache_needs_update = True
+            self.state.rebuild_trail_cache = True
 
         # Event handling for quit, manual reset, and mouse click
         slider_changed = False
@@ -293,14 +306,14 @@ class Visualization:
                 self.screen = pygame.display.set_mode(
                     (self.width, self.height), pygame.RESIZABLE
                 )
-                self.cache_needs_update = True
+                self.state.rebuild_trail_cache = True
                 self.create_sliders()  # Recreate sliders with new dimensions
             elif event.type == pygame.MOUSEWHEEL:
                 if event.y > 0:
                     self.scale *= 1.05
                 elif event.y < 0:
                     self.scale /= 1.05
-                self.cache_needs_update = True
+                self.state.rebuild_trail_cache = True
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_F11:
                     self.fullscreen = not self.fullscreen
@@ -310,7 +323,7 @@ class Visualization:
                     self.update_fullscreen()
                 if event.key == pygame.K_r:
                     self.frame = 0
-                    self.scale = self._scale
+                    self.scale = self.const.scale
                     self.rotation_x = 0
                     self.rotation_z = 0
                     self.focus_body_idx = None
@@ -318,7 +331,7 @@ class Visualization:
                     self.speed = 1
                 if event.key == pygame.K_h:
                     self.ui_visible = (self.ui_visible - 1) % 3
-                self.cache_needs_update = True
+                self.state.rebuild_trail_cache = True
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 mouse_x, mouse_y = event.pos
                 # body_clicked = False
@@ -348,7 +361,8 @@ class Visualization:
                 #         # Second click in empty space
                 #         self.focus_body_idx = None
 
-                self.cache_needs_update = True
+                self.state.rebuild_relative_trail_cache = True
+                self.state.rebuild_trail_cache = True
 
             # Handle events for sliders
             for slider in self.sliders:
@@ -358,7 +372,8 @@ class Visualization:
         # Update trail parameters if sliders changed
         if slider_changed:
             self.update_trail_parameters()
-            self.cache_needs_update = True
+            self.state.rebuild_relative_trail_cache = True
+            self.state.rebuild_trail_cache = True
 
     def update_fullscreen(self):
         if self.fullscreen:
@@ -373,8 +388,8 @@ class Visualization:
         else:
             if (self.screen.get_flags() & pygame.FULLSCREEN) != 0:
                 # Restore original window size
-                self.width = self._width
-                self.height = self._height
+                self.width = self.const.width
+                self.height = self.const.height
                 self.screen = pygame.display.set_mode(
                     (self.width, self.height), pygame.RESIZABLE
                 )
@@ -390,7 +405,7 @@ class Visualization:
 
         # Calculate how many simulation steps to advance
         days_to_advance = self.speed * real_time_elapsed
-        seconds_to_advance = days_to_advance * 86400  # 86400 seconds in a day
+        seconds_to_advance = days_to_advance * T.d
 
         total_steps = seconds_to_advance / self.sim.dt + self._fractional_steps
         steps_to_advance = int(total_steps)
@@ -400,13 +415,14 @@ class Visualization:
 
         if steps_to_advance > 0:
             self.frame += steps_to_advance
+            self.trail_cache_frame += steps_to_advance
             if self.frame >= self.sim.steps:
                 self.frame = 0
-                self.cache_needs_update = True
+                self.state.rebuild_relative_trail_cache = True
+                self.state.rebuild_trail_cache = True
 
             # Ensure frame is integer for indexing
             self.frame = int(self.frame)
-            self.cache_needs_update = True
 
         # Store the actual frame time for FPS calculation
         self.last_frame_time = real_time_elapsed
@@ -415,6 +431,19 @@ class Visualization:
         if self.last_frame_time < 1 / 60:
             pygame.time.wait(int(1000 * (1 / 60 - self.last_frame_time)))
             self.last_frame_time = 1 / 60  # Use minimum frame time
+
+        # Update the trail
+        self.update_trail()
+
+    def update_trail(self) -> None:
+        if self.state.rebuild_relative_trail_cache:
+            self.rebuild_relative_trail_cache()
+        else:
+            self.update_relative_trail_cache()
+        if self.state.rebuild_trail_cache:
+            self.rebuild_trail_cache()
+        else:
+            self.update_trail_cache()
 
     def draw_frame(self) -> None:
         self.screen.fill(VisC.black)
@@ -456,16 +485,37 @@ class Visualization:
                         text, (screen_pos_i[0] + 15, screen_pos_i[1] - 10)
                     )
 
-        self.trail_cache_frame = self.frame
-
     def draw_time(self) -> None:
         t = self.frame * self.sim.dt
-        sim_date = datetime.strptime(
-            self.sim.epoch, "%Y-%m-%d %H:%M:%S"
-        ) + timedelta(seconds=t)
-        date_text = self.font.render(
-            f"Date: {sim_date.strftime('%Y-%m-%d %H:%M:%S')}", True, VisC.white
-        )
+        if self.sim.epoch:
+            sim_date = datetime.strptime(
+                self.sim.epoch, "%Y-%m-%d %H:%M:%S"
+            ) + timedelta(seconds=t)
+            date_text = self.font.render(
+                f"Date: {sim_date.strftime('%Y-%m-%d %H:%M:%S')}",
+                True,
+                VisC.white,
+            )
+        else:
+            label_str = "Date: "
+            secs = T.a
+            if t >= secs:
+                label_str += f"{(t / secs):.0f}:"
+            secs = T.d
+            if t >= secs:
+                label_str += f"{(t / secs)%365.25:.0f}:"
+            secs = T.h
+            if t >= secs:
+                label_str += f"{(t / secs)%24:.0f}:"
+            secs = T.m
+            if t >= secs:
+                label_str += f"{(t / secs)%60:.0f}:"
+            label_str += f"{t%60:.1f}"
+            date_text = self.font.render(
+                label_str,
+                True,
+                VisC.white,
+            )
         self.screen.blit(date_text, (10, 10))
 
     def draw_axes(self) -> None:
@@ -575,28 +625,119 @@ class Visualization:
         # z_tilt = y_rot * sin_x + z * cos_x  # not used for 2D
         return int(center[0] + x_rot * scale), int(center[1] - y_tilt * scale)
 
+    def update_relative_trail_cache(self) -> None:
+        """Update the relative trail cache with new positions."""
+
+        # Calculate how many new trail points we need to add
+        trail_points_to_add = self.trail_cache_frame // self.trail_step
+        trail_frame_remainder = self.trail_cache_frame % self.trail_step
+
+        if trail_points_to_add >= self.trail_length:
+            # Replace entire cache
+            self.rebuild_relative_trail_cache()
+            return
+        if trail_points_to_add > 0:
+            # Get the positions to add (from the simulation data)
+            start_frame = self.frame - self.trail_cache_frame
+            end_frame = start_frame + trail_points_to_add * self.trail_step
+            step = self.trail_step
+
+            # Ensure we don't go out of bounds
+            start_frame = max(0, start_frame)
+            end_frame = min(self.sim.steps, end_frame)
+
+            if start_frame < end_frame:
+                positions_to_add = self.sim.mm[
+                    start_frame:end_frame:step, 0:3, :
+                ]
+
+                # Apply focus offset if needed
+                if self.trail_focus_body_idx is not None:
+                    focus_positions = self.sim.mm[
+                        start_frame:end_frame:step,
+                        0:3,
+                        self.trail_focus_body_idx,
+                    ][:, :, np.newaxis]
+                    positions_to_add = positions_to_add - focus_positions
+
+                # Roll the cache and add new positions
+                self.relative_trail_cache = np.roll(
+                    self.relative_trail_cache, -trail_points_to_add, axis=0
+                )
+                self.relative_trail_cache[-trail_points_to_add:, :, :] = (
+                    positions_to_add
+                )
+
+        # Always update the very latest position
+        current_pos = self.sim.mm[self.frame, 0:3, :][np.newaxis, :, :]
+
+        if self.trail_focus_body_idx is not None:
+            focus_pos = self.sim.mm[
+                self.frame, 0:3, self.trail_focus_body_idx
+            ][np.newaxis, :, np.newaxis]
+            current_pos = current_pos - focus_pos
+
+        self.relative_trail_cache[-1, :, :] = current_pos
+        self.trail_cache_frame = trail_frame_remainder
+
     def update_trail_cache(self) -> None:
-        if self.trail_focus_body_idx != self.focus_body_idx:
+        """Update the display trail cache from the relative trail cache."""
+
+        # Calculate how many points to update
+        trail_points_to_update = self.trail_cache_frame // self.trail_step
+
+        # Check if we need a complete rebuild
+        needs_rebuild = (
+            self.trail_focus_body_idx != self.trail_cache_focus
+            or self.state.rebuild_trail_cache
+            or trail_points_to_update >= self.trail_length
+            or True
+        )
+
+        if needs_rebuild:
             self.rebuild_trail_cache()
-        else:
-            new_cache = np.roll(self.trail_cache, -1, axis=0)
-            current_pos = self.sim.mm[self.frame, 0:3, :][np.newaxis, :, :]
-            if self.trail_focus_body_idx is not None:
-                pos_diff = self.sim.mm[
-                    self.frame, 0:3, self.trail_focus_body_idx
-                ][np.newaxis, :, np.newaxis]
-                current_pos = current_pos - pos_diff
+            return
+
+        if trail_points_to_update > 0:
+            # Get the positions from relative trail cache that need updating
+            start_idx = (
+                -trail_points_to_update - 1
+            )  # -1 for the current position
+            positions_to_update = self.relative_trail_cache[start_idx:, :, :]
+
+            # Apply current focus offset if needed
             if self.focus_body_idx is not None:
-                pos_diff = current_pos[-1, :, self.focus_body_idx][
+                focus_offset = positions_to_update[-1, :, self.focus_body_idx][
                     np.newaxis, :, np.newaxis
                 ]
-                current_pos = current_pos - pos_diff
-            scaled_pos = self.scale_pos_array(current_pos)
-            new_cache[-1, :, :] = scaled_pos
+                positions_to_update = positions_to_update - focus_offset
 
-            self.trail_cache = new_cache
+            # Scale positions for display
+            scaled_positions = self.scale_pos_array(positions_to_update)
 
-    def rebuild_trail_cache(self) -> None:
+            # Roll and update
+            self.trail_cache = np.roll(
+                self.trail_cache, -trail_points_to_update, axis=0
+            )
+            self.trail_cache[-trail_points_to_update:, :, :] = scaled_positions
+
+        # Always update the current position
+        current_relative_pos = self.relative_trail_cache[-1, :, :][
+            np.newaxis, :, :
+        ]
+
+        if self.focus_body_idx is not None:
+            focus_offset = current_relative_pos[-1, :, self.focus_body_idx][
+                np.newaxis, :, np.newaxis
+            ]
+            current_relative_pos = current_relative_pos - focus_offset
+
+        scaled_current_pos = self.scale_pos_array(current_relative_pos)
+        self.trail_cache[-1, :, :] = scaled_current_pos[
+            0
+        ]  # Remove the extra dimension
+
+    def rebuild_relative_trail_cache(self) -> None:
         new_cache = np.empty((self.trail_length, 3, self.sim.num_bodies))
         initial_point = max(
             0, self.frame - self.trail_length * self.trail_step + 1
@@ -612,6 +753,21 @@ class Visualization:
                 self.trail_focus_body_idx,
             ][:, :, np.newaxis]
             current_pos = current_pos - pos_diff
+
+        n = current_pos.shape[0]
+        new_cache[-n:, :, :] = current_pos
+        new_cache[0:-n, :, :] = np.repeat(
+            current_pos[-n, :, :][np.newaxis, :, :],
+            self.trail_length - n,
+            axis=0,
+        )
+        self.relative_trail_cache = new_cache
+        self.state.rebuild_relative_trail_cache = False
+        self.trail_cache_frame = 0
+
+    def rebuild_trail_cache(self) -> None:
+        new_cache = np.empty((self.trail_length, 3, self.sim.num_bodies))
+        current_pos = self.relative_trail_cache
         if self.focus_body_idx is not None:
             pos_diff = current_pos[-1, :, self.focus_body_idx][
                 np.newaxis, :, np.newaxis
@@ -627,7 +783,7 @@ class Visualization:
             axis=0,
         )
         self.trail_cache = new_cache
-        self.cache_needs_update = False
+        self.state.rebuild_trail_cache = False
 
     def is_on_screen(self, pos, margin=100) -> bool:
         return (
