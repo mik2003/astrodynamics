@@ -10,111 +10,8 @@ import pygame
 from project.data import A
 from project.simulation import Simulation
 from project.utilities import T
-
-
-class Slider:
-    def __init__(
-        self, x, y, width, height, min_val, max_val, initial_val, label
-    ):
-        self.rect = pygame.Rect(x, y, width, height)
-        self.handle_rect = pygame.Rect(x, y - 5, 10, height + 10)
-        self.min_val = min_val
-        self.max_val = max_val
-        self.val = initial_val
-        self.dragging = False
-        self.label = label
-        self.update_handle_position()
-
-    def update_handle_position(self):
-        relative_val = (self.val - self.min_val) / (
-            self.max_val - self.min_val
-        )
-        self.handle_rect.centerx = (
-            self.rect.left + relative_val * self.rect.width
-        )
-
-    def draw(self, screen, font):
-        # Draw slider track
-        pygame.draw.rect(screen, (100, 100, 100), self.rect)
-        pygame.draw.rect(screen, (200, 200, 200), self.rect, 2)
-
-        # Draw handle
-        pygame.draw.rect(screen, (255, 255, 255), self.handle_rect)
-        pygame.draw.rect(screen, (150, 150, 150), self.handle_rect, 2)
-
-        # Draw label and value
-        # Choose unit dynamically: hours (h), days (d), years (a)
-        seconds = self.val
-        if seconds < T.d:
-            unit = "h"
-            value = seconds / T.h
-            value_str = f"{value:.0f}"
-        elif seconds < T.a:
-            unit = "d"
-            value = seconds / T.d
-            value_str = f"{value:.1f}" if value < 10 else f"{value:.0f}"
-        else:
-            unit = "a"
-            value = seconds / T.a
-            value_str = (
-                f"{value:.2f}"
-                if value < 10
-                else f"{value:.1f}" if value < 100 else f"{value:.0f}"
-            )
-
-        label_text = font.render(
-            f"{self.label} ({unit}): {value_str}", True, (255, 255, 255)
-        )
-        screen.blit(label_text, (self.rect.x, self.rect.y - 25))
-
-    def handle_event(self, event):
-        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-            if self.rect.collidepoint(event.pos):
-                self.dragging = True
-
-        elif (
-            self.dragging
-            and event.type == pygame.MOUSEBUTTONUP
-            and event.button == 1
-        ):
-            self.dragging = False
-
-        elif event.type == pygame.MOUSEMOTION and self.dragging:
-            # Update value based on mouse position
-            relative_x = max(
-                0, min(1, (event.pos[0] - self.rect.left) / self.rect.width)
-            )
-            self.val = self.min_val + relative_x * (
-                self.max_val - self.min_val
-            )
-            self.update_handle_position()
-            return True  # Value changed
-
-        if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_r:
-                self.val = T.h
-                self.update_handle_position()
-                return True
-
-        return False
-
-
-class VisC:
-    black = (0, 0, 0)
-    white = (255, 255, 255)
-    colors = [(255, 215, 0), (0, 191, 255), (220, 20, 60), (34, 139, 34)]
-
-
-@dataclass(frozen=True)
-class VisualizationConstants:
-    width = 800  # [px]
-    height = 600  # [px]
-    scale = 1e-9  # [?]
-    trail_step_time = T.d  # [s]
-    trail_length_time = T.a  # [s]
-    speed = 1.0  # Playback speed [days\s]
-    rotation_z = 0.0  # Rotation in-plane [rad]
-    rotation_x = 0.0  # Rotation out-of-plane [rad]
+from project.visualization.constants import VisC
+from project.visualization.elements import Slider
 
 
 @dataclass
@@ -146,7 +43,6 @@ class Visualization:
         self,
         sim: Simulation,
     ) -> None:
-        self.const = VisualizationConstants()
         self.state = VisualizationState()
         self.cache = VisualizationCache()
 
@@ -326,7 +222,7 @@ class Visualization:
                     self.update_fullscreen()
                 if event.key == pygame.K_r:
                     self.frame = 0
-                    self.state.scale = self.const.scale
+                    self.state.scale = VisC.scale
                     self.state.rotation_x = 0
                     self.state.rotation_z = 0
                     self.focus_body_idx = None
@@ -391,8 +287,8 @@ class Visualization:
         else:
             if (self.screen.get_flags() & pygame.FULLSCREEN) != 0:
                 # Restore original window size
-                self.state.width = self.const.width
-                self.state.height = self.const.height
+                self.state.width = VisC.width
+                self.state.height = VisC.height
                 self.screen = pygame.display.set_mode(
                     (self.state.width, self.state.height), pygame.RESIZABLE
                 )
