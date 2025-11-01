@@ -9,9 +9,9 @@ import pygame
 
 from project.data import A
 from project.simulation import Simulation
-from project.utilities import T
+from project.utilities import T, ValueUnitToStr
 from project.visualization.constants import VisC
-from project.visualization.elements import Slider
+from project.visualization.elements import InfoDisplay, Slider
 
 
 @dataclass
@@ -21,10 +21,10 @@ class VisualizationState:
 
     width = 800  # [px]
     height = 600  # [px]
-    scale = 1e-9  # [?]
+    scale = 1e-9  # [px/m]
     trail_step_time = T.d  # [s]
     trail_length_time = T.a  # [s]
-    speed = 1.0  # Playback speed [days\s]
+    speed = 1.0  # Playback speed [days/s]
     rotation_z = 0.0  # Rotation in-plane [rad]
     rotation_x = 0.0  # Rotation out-of-plane [rad]
 
@@ -66,7 +66,8 @@ class Visualization:
         self.font: pygame.font.Font
         self.small_font: pygame.font.Font
 
-        # Add sliders
+        # Add sliders / info
+        self.info = InfoDisplay(0, 200)
         self.sliders: List[Slider] = []
         self.ui_visible: int = 2
 
@@ -113,6 +114,23 @@ class Visualization:
 
         self.sliders = [trail_step_slider, trail_time_slider]
 
+        self.info.add_value_display(
+            min_value=1e-6,
+            max_value=1e15,
+            initial_value=VisC.trail_step_time,
+            label="Trail Step",
+            modifiers=["/10", "/1.1", "*1.1", "*10"],
+            unit="s",
+        )
+        self.info.add_value_display(
+            min_value=1e-6,
+            max_value=1e15,
+            initial_value=VisC.trail_length_time,
+            label="Trail Length",
+            modifiers=["/10", "/1.1", "*1.1", "*10"],
+            unit="s",
+        )
+
     def update_trail_parameters(self):
         """Update trail parameters from slider values"""
         trail_step_changed = False
@@ -138,6 +156,48 @@ class Visualization:
                         slider.update_handle_position()
                     trail_time_changed = True
 
+        for value_display in self.info.value_displays:
+            if value_display.label == "Trail Step":
+                if value_display.val != self.state.trail_step_time:
+                    # Value changed
+                    if value_display.val <= self.state.trail_length_time:
+                        # Trail step is smaller than trail length
+                        if (
+                            self.state.trail_length_time / value_display.val
+                            > VisC.max_trail_points
+                        ):
+                            # Maximum trail points reached
+                            value_display.val = (
+                                self.state.trail_length_time
+                                / VisC.max_trail_points
+                            )
+                        self.state.trail_step_time = value_display.val
+                        self.trail_step = self.calculate_trail_step()
+                    else:
+                        # Trail step is larger than trail length
+                        value_display.val = self.state.trail_length_time
+                    trail_step_changed = True
+
+            elif value_display.label.startswith("Trail Length"):
+                if value_display.val != self.state.trail_length_time:
+                    # Value changed
+                    if value_display.val >= self.state.trail_step_time:
+                        # Trail length is larger than trail step
+                        if (
+                            value_display.val / self.state.trail_step_time
+                            > VisC.max_trail_points
+                        ):
+                            # Maximum trail points reached
+                            value_display.val = (
+                                self.state.trail_step_time
+                                * VisC.max_trail_points
+                            )
+                        self.state.trail_length_time = value_display.val
+                    else:
+                        # Trail length is smaller than trail step
+                        value_display.val = self.state.trail_step_time
+                    trail_time_changed = True
+
         # Update trail length if either parameter changed
         if trail_step_changed or trail_time_changed:
             self.trail_length = self.calculate_trail_length()
@@ -153,8 +213,10 @@ class Visualization:
         pygame.display.set_caption("Astrodynamics Simulation")
         self.clock = pygame.time.Clock()
 
-        self.font = pygame.font.SysFont("Courier New", 24)
-        self.small_font = pygame.font.SysFont("Courier New", 16)
+        self.font = pygame.font.SysFont("Courier New", VisC.font_size)
+        self.small_font = pygame.font.SysFont(
+            "Courier New", VisC.small_font_size
+        )
         self.create_sliders()
 
         while self.state.running:
@@ -197,6 +259,7 @@ class Visualization:
 
         # Event handling for quit, manual reset, and mouse click
         slider_changed = False
+        info_changed = False
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.state.running = False
@@ -263,6 +326,8 @@ class Visualization:
                 self.cache.rebuild_relative_trail = True
                 self.cache.rebuild_trail = True
 
+                info_changed = self.info.handle_event(event=event)
+
             # Handle events for sliders
             for slider in self.sliders:
                 if slider.handle_event(event):
@@ -270,6 +335,11 @@ class Visualization:
 
         # Update trail parameters if sliders changed
         if slider_changed:
+            self.update_trail_parameters()
+            self.cache.rebuild_relative_trail = True
+            self.cache.rebuild_trail = True
+
+        if info_changed:
             self.update_trail_parameters()
             self.cache.rebuild_relative_trail = True
             self.cache.rebuild_trail = True
@@ -467,7 +537,7 @@ class Visualization:
             bar_height,
         )
         label_text = self.small_font.render(
-            f"{length/1e3:.2e} km", True, VisC.white
+            ValueUnitToStr.m(length), True, VisC.white
         )
         label_rect = label_text.get_rect(
             center=((bar_x1 + bar_x2) // 2, bar_y - 15)
@@ -483,6 +553,8 @@ class Visualization:
         # Draw sliders
         for slider in self.sliders:
             slider.draw(self.screen, self.small_font)
+
+        self.info.draw(screen=self.screen, font=self.small_font)
 
     def draw_info(self) -> None:
         actual_fps = 1 / self.last_frame_time

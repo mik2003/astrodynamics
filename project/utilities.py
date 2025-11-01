@@ -15,11 +15,20 @@ A = npt.NDArray[np.float64]
 class T:
     """Time in [s]"""
 
-    s = 1
-    m = 60
-    h = 3600
-    d = 86400
-    a = 31557600
+    s = 1  # Second
+    m = 60  # Minute
+    h = 3600  # Hour
+    d = 86400  # Day
+    a = 31557600  # Annum
+
+
+@dataclass(frozen=True)
+class D:
+    """Distances in [m]"""
+
+    au = 149597870700  # Astronomical unit
+    ly = 9460730472580800  # Light year
+    pc = 96939420213600000 / np.pi  # Parsec
 
 
 def camel_to_snake(name: str) -> str:
@@ -116,3 +125,39 @@ def print_done() -> None:
     print(
         "\rProgress [" + "#" * 50 + "] 100.00% | ETA: 00:00:00", end=""
     )  # Show full bar at the end
+
+
+class ValueUnitToStr:
+    @staticmethod
+    def s(value: float, str_format: str = "{:.2f}") -> str:
+        """Seconds"""
+        if value >= T.a:
+            return str_format.format(value / T.a) + " a"
+        elif value >= T.d:
+            return str_format.format(value / T.d) + " d"
+        elif value >= T.h:
+            return str_format.format(value / T.h) + " h"
+        elif value >= T.m:
+            return str_format.format(value / T.m) + " m"
+        else:
+            return str_format.format(value) + " s"
+
+    @staticmethod
+    def m(value: float, str_format: str = "{:.2e}") -> str:
+        """Meters"""
+        # if value >= D.pc:
+        #     return str_format.format(value / D.pc) + " pc"
+        if value >= D.ly:
+            return str_format.format(value / D.ly) + " ly"
+        elif value >= D.au:
+            return str_format.format(value / D.au) + " AU"
+        elif value >= 1e3:
+            return str_format.format(value / 1e3) + " km"
+        elif value >= 1:
+            return str_format.format(value / 1) + " m"
+        # elif value >= 1e-1:
+        #     return str_format.format(value / 1e-1) + " dm"
+        # elif value >= 1e-2:
+        #     return str_format.format(value / 1e-2) + " cm"
+        else:
+            return str_format.format(value / 1e-3) + " mm"
