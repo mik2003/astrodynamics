@@ -96,8 +96,8 @@ class Slider:
 class InfoDisplay:
     def __init__(
         self,
-        x: int,
-        y: int,
+        x: int = 0,
+        y: int = 0,
         value_displays: List["ValueDisplay"] | None = None,
     ) -> None:
         if value_displays is None:
