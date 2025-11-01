@@ -171,11 +171,10 @@ class Visualization:
                                 self.state.trail_length_time
                                 / VisC.max_trail_points
                             )
-                        self.state.trail_step_time = value_display.val
-                        self.trail_step = self.calculate_trail_step()
                     else:
                         # Trail step is larger than trail length
                         value_display.val = self.state.trail_length_time
+                    self.state.trail_step_time = value_display.val
                     trail_step_changed = True
 
             elif value_display.label.startswith("Trail Length"):
@@ -192,14 +191,15 @@ class Visualization:
                                 self.state.trail_step_time
                                 * VisC.max_trail_points
                             )
-                        self.state.trail_length_time = value_display.val
                     else:
                         # Trail length is smaller than trail step
                         value_display.val = self.state.trail_step_time
+                    self.state.trail_length_time = value_display.val
                     trail_time_changed = True
 
         # Update trail length if either parameter changed
         if trail_step_changed or trail_time_changed:
+            self.trail_step = self.calculate_trail_step()
             self.trail_length = self.calculate_trail_length()
             self.cache.rebuild_relative_trail = True
             self.cache.rebuild_trail = True
@@ -397,9 +397,10 @@ class Visualization:
         self.last_frame_time = real_time_elapsed
 
         # Cap at 60 FPS to prevent excessive CPU usage
-        if self.last_frame_time < 1 / 60:
-            pygame.time.wait(int(1000 * (1 / 60 - self.last_frame_time)))
-            self.last_frame_time = 1 / 60  # Use minimum frame time
+        fps = 15
+        if self.last_frame_time < 1 / fps:
+            pygame.time.wait(int(1000 * (1 / fps - self.last_frame_time)))
+            self.last_frame_time = 1 / fps  # Use minimum frame time
 
         # Update the trail
         self.update_trail()
@@ -626,6 +627,10 @@ class Visualization:
                     start_frame:end_frame:step, 0:3, :
                 ]
 
+                print("Added trail")
+                print(trail_points_to_add)
+                print(positions_to_add.shape)
+
                 # Apply focus offset if needed
                 if self.trail_focus_body_idx is not None:
                     focus_positions = self.sim.mm[
@@ -642,6 +647,8 @@ class Visualization:
                 self.cache.relative_trail[-trail_points_to_add:, :, :] = (
                     positions_to_add
                 )
+
+        print(f"\r{trail_frame_remainder:.0f}", end="")
 
         # Always update the very latest position
         current_pos = self.sim.mm[self.frame, 0:3, :][np.newaxis, :, :]
@@ -666,7 +673,7 @@ class Visualization:
             self.trail_focus_body_idx != self.cache.trail_focus
             or self.cache.rebuild_trail
             or trail_points_to_update >= self.trail_length
-            or True
+            or True  # TODO
         )
 
         if needs_rebuild:
@@ -736,9 +743,24 @@ class Visualization:
             self.trail_length - n,
             axis=0,
         )
-        self.cache.relative_trail = new_cache
+
+        self.cache.relative_trail = np.roll(new_cache, -1, axis=0)
+
+        # Always update the very latest position
+        current_pos = self.sim.mm[self.frame, 0:3, :][np.newaxis, :, :]
+
+        if self.trail_focus_body_idx is not None:
+            focus_pos = self.sim.mm[
+                self.frame, 0:3, self.trail_focus_body_idx
+            ][np.newaxis, :, np.newaxis]
+            current_pos = current_pos - focus_pos
+
+        self.cache.relative_trail[-1, :, :] = current_pos
+
         self.cache.rebuild_relative_trail = False
-        self.cache.trail_frame = 0
+        self.cache.trail_frame = (
+            self.frame + 1 - initial_point
+        ) % self.trail_step
 
     def rebuild_trail_cache(self) -> None:
         new_cache = np.empty((self.trail_length, 3, self.sim.num_bodies))
@@ -750,13 +772,7 @@ class Visualization:
             current_pos = current_pos - pos_diff
 
         scaled_pos = self.scale_pos_array(current_pos)
-        n = scaled_pos.shape[0]
-        new_cache[-n:, :, :] = scaled_pos
-        new_cache[0:-n, :, :] = np.repeat(
-            scaled_pos[-n, :, :][np.newaxis, :, :],
-            self.trail_length - n,
-            axis=0,
-        )
+        new_cache[:, :, :] = scaled_pos
         self.cache.trail = new_cache
         self.cache.rebuild_trail = False
 
