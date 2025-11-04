@@ -70,7 +70,7 @@ class Visualization:
 
         # Add info
         self.info = InfoDisplay()
-        self.ui_visible: int = 2
+        self.ui_visible: bool = True
 
     def calculate_trail_step(self) -> int:
         return max(
@@ -298,7 +298,7 @@ class Visualization:
                 if event.key == pygame.K_r:
                     self.reset_parameters()
                 if event.key == pygame.K_h:
-                    self.ui_visible = (self.ui_visible - 1) % 3
+                    self.ui_visible = not self.ui_visible
                 self.cache.rebuild_trail = True
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 mouse_x, mouse_y = event.pos
@@ -410,12 +410,10 @@ class Visualization:
 
         self.draw_bodies()
 
-        if self.ui_visible > 0:
+        if self.ui_visible:
             self.draw_time()
             self.draw_axes()
             self.draw_scale()
-
-        if self.ui_visible > 1:
             self.draw_controls()
             self.draw_info()
 
