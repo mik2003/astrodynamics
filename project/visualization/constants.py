@@ -24,9 +24,12 @@ class VisC:
     font_size = 24
     small_font_size = 16
 
-    value_modifier_width = 35
+    info_display_y = 100
+    info_display_handle_width = 25
+
+    value_modifier_width = 40
     value_modifier_height = 20
-    value_display_width = 200
+    value_display_width = 225
     value_display_padding = 5
     value_display_height = (
         3 * value_display_padding + small_font_size + value_modifier_height
@@ -34,5 +37,13 @@ class VisC:
     value_modifier_y_offset = (
         value_display_height - value_display_padding - value_modifier_height
     )
+    slider_width = value_display_width - 6 * value_display_padding
+    slider_height = 10
+    slider_handle_width = 10
+    slider_handle_height = slider_height + 10
+    slider_y_offset = (
+        value_modifier_y_offset + (value_modifier_height - slider_height) // 2
+    )
 
+    # Other constants
     max_trail_points = T.a // T.h  # Avoid memory allocation errors

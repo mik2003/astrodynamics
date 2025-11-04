@@ -22,8 +22,8 @@ class VisualizationState:
     width = 800  # [px]
     height = 600  # [px]
     scale = 1e-9  # [px/m]
-    trail_step_time = T.d  # [s]
-    trail_length_time = T.a  # [s]
+    trail_step_time = 1.0  # [s]
+    trail_length_time = 1.0  # [s]
     speed = T.d  # Playback speed [s/s]
     rotation_z = 0.0  # Rotation in-plane [rad]
     rotation_x = 0.0  # Rotation out-of-plane [rad]
@@ -47,6 +47,8 @@ class Visualization:
 
         self.sim = sim
 
+        self.state.trail_step_time = self.sim.dt
+        self.state.trail_length_time = self.sim.dt  # Begin with no trail
         self.trail_step = self.calculate_trail_step()
         self.trail_length = self.calculate_trail_length()
         self._trail_points_to_add = 0
@@ -66,9 +68,8 @@ class Visualization:
         self.font: pygame.font.Font
         self.small_font: pygame.font.Font
 
-        # Add sliders / info
+        # Add info
         self.info = InfoDisplay()
-        # self.sliders: List[Slider] = []
         self.ui_visible: int = 2
 
     def calculate_trail_step(self) -> int:
@@ -82,42 +83,19 @@ class Visualization:
         )  # Number of positions to keep in trail
 
     def place_info(self) -> None:
-        self.info.y = (
-            self.state.height - self.info.n * VisC.value_display_height - 25
+        self.info.y = VisC.info_display_y
+
+    def create_value_displays(self):
+        """Create value displays for parameters"""
+        self.info.add_value_display(
+            min_value=0,
+            max_value=self.sim.steps - 1,
+            initial_value=0,
+            label="Step",
+            modifiers=["slider"],
+            unit=f"/{self.sim.steps}",
+            str_format="{:.0f}",
         )
-
-    def create_sliders(self):
-        """Create sliders for trail parameters"""
-        # slider_width = 200
-        # slider_height = 10
-        # start_x = 10
-        # start_y = self.state.height - 150
-
-        # # Trail step time slider (seconds between trail points)
-        # trail_step_slider = Slider(
-        #     start_x,
-        #     start_y,
-        #     slider_width,
-        #     slider_height,
-        #     min_val=1,
-        #     max_val=max(1.0, self.state.trail_step_time * 10),
-        #     initial_val=self.state.trail_step_time,
-        #     label="Trail Step",
-        # )
-
-        # # Trail time slider (total trail duration in seconds)
-        # trail_time_slider = Slider(
-        #     start_x,
-        #     start_y + 50,
-        #     slider_width,
-        #     slider_height,
-        #     min_val=1,
-        #     max_val=max(1.0, self.state.trail_length_time * 10),
-        #     initial_val=self.state.trail_length_time,
-        #     label="Trail Length",
-        # )
-
-        # self.sliders = [trail_step_slider, trail_time_slider]
 
         self.info.add_value_display(
             min_value=0.0,
@@ -131,7 +109,7 @@ class Visualization:
         self.info.add_value_display(
             min_value=self.sim.dt,
             max_value=self.sim.time,
-            initial_value=self.sim.dt,
+            initial_value=self.state.trail_step_time,
             label="Trail Step",
             modifiers=["/10", "/1.1", "*1.1", "*10"],
             unit="s",
@@ -139,7 +117,7 @@ class Visualization:
         self.info.add_value_display(
             min_value=self.sim.dt,
             max_value=self.sim.time,
-            initial_value=self.sim.dt,  # start with no trail
+            initial_value=self.state.trail_length_time,
             label="Trail Length",
             modifiers=["/10", "/1.1", "*1.1", "*10"],
             unit="s",
@@ -148,12 +126,19 @@ class Visualization:
         self.place_info()
 
     def update_parameters(self):
-        """Update trail parameters from slider values"""
+        """Update trail parameters from value displays"""
         trail_step_changed = False
         trail_time_changed = False
 
         for value_display in self.info.value_displays:
-            if value_display.label == "Speed":
+            if value_display.label == "Step":
+                if value_display.val != self.frame:
+                    # Value changed
+                    self.frame = int(value_display.val)
+                    self.cache.rebuild_relative_trail = True
+                    self.cache.rebuild_trail = True
+
+            elif value_display.label == "Speed":
                 self.state.speed = value_display.val
 
             elif value_display.label == "Trail Step":
@@ -203,6 +188,35 @@ class Visualization:
             self.cache.rebuild_relative_trail = True
             self.cache.rebuild_trail = True
 
+    def reset_parameters(self):
+        """Reset parameters"""
+        self.frame = 0
+        self.state.scale = VisC.scale
+        self.state.rotation_x = 0
+        self.state.rotation_z = 0
+        self.focus_body_idx = None
+        self.trail_focus_body_idx = None
+        self.state.speed = T.d
+
+        for value_display in self.info.value_displays:
+            if value_display.label == "Step":
+                value_display.val = self.frame
+                if value_display.slider:
+                    value_display.slider.val = self.frame
+                    value_display.slider.update_handle_position()
+
+            if value_display.label == "Speed":
+                value_display.val = self.state.speed
+
+            if value_display.label == "Trail Step":
+                value_display.val = self.state.trail_step_time
+
+            if value_display.label.startswith("Trail Length"):
+                value_display.val = self.state.trail_length_time
+
+        self.cache.rebuild_relative_trail = True
+        self.cache.rebuild_trail = True
+
     def start(self) -> None:
         pygame.init()
         self.screen = pygame.display.set_mode(
@@ -216,7 +230,7 @@ class Visualization:
         self.small_font = pygame.font.SysFont(
             "Courier New", VisC.small_font_size
         )
-        self.create_sliders()
+        self.create_value_displays()
 
         while self.state.running:
             self.handle_input()
@@ -257,7 +271,6 @@ class Visualization:
             self.cache.rebuild_trail = True
 
         # Event handling for quit, manual reset, and mouse click
-        # slider_changed = False
         info_changed = self.frame == 0
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -268,7 +281,6 @@ class Visualization:
                     (self.state.width, self.state.height), pygame.RESIZABLE
                 )
                 self.cache.rebuild_trail = True
-                # self.create_sliders()  # Recreate sliders with new dimensions
                 self.place_info()
             elif event.type == pygame.MOUSEWHEEL:
                 if event.y > 0:
@@ -284,13 +296,7 @@ class Visualization:
                     self.state.fullscreen = False
                     self.update_fullscreen()
                 if event.key == pygame.K_r:
-                    self.frame = 0
-                    self.state.scale = VisC.scale
-                    self.state.rotation_x = 0
-                    self.state.rotation_z = 0
-                    self.focus_body_idx = None
-                    self.trail_focus_body_idx = None
-                    self.state.speed = T.d
+                    self.reset_parameters()
                 if event.key == pygame.K_h:
                     self.ui_visible = (self.ui_visible - 1) % 3
                 self.cache.rebuild_trail = True
@@ -314,30 +320,10 @@ class Visualization:
                             self.trail_focus_body_idx = i
                         break
 
-                # # Only reset if no body was clicked
-                # if not body_clicked:
-                #     if self.trail_focus_body_idx is not None:
-                #         # First click in empty space
-                #         self.trail_focus_body_idx = None
-                #     else:
-                #         # Second click in empty space
-                #         self.focus_body_idx = None
-
                 self.cache.rebuild_relative_trail = True
                 self.cache.rebuild_trail = True
 
-                info_changed = self.info.handle_event(event=event)
-
-            # Handle events for sliders
-            # for slider in self.sliders:
-            #     if slider.handle_event(event):
-            #         slider_changed = True
-
-        # Update trail parameters if sliders changed
-        # if slider_changed:
-        #     self.update_trail_parameters()
-        #     self.cache.rebuild_relative_trail = True
-        #     self.cache.rebuild_trail = True
+            info_changed = self.info.handle_event(event=event)
 
         if info_changed:
             self.update_parameters()
@@ -362,9 +348,6 @@ class Visualization:
                 self.screen = pygame.display.set_mode(
                     (self.state.width, self.state.height), pygame.RESIZABLE
                 )
-
-        # Recreate sliders to fit new screen size
-        # self.create_sliders()
 
     def advance_frame(self) -> None:
         # Calculate real time elapsed since last frame
@@ -400,6 +383,14 @@ class Visualization:
         if self.last_frame_time < 1 / fps:
             pygame.time.wait(int(1000 * (1 / fps - self.last_frame_time)))
             self.last_frame_time = 1 / fps  # Use minimum frame time
+
+        # Advance step slider
+        for value_display in self.info.value_displays:
+            if value_display.label == "Step":
+                value_display.val = self.frame
+                if value_display.slider:
+                    value_display.slider.val = self.frame
+                    value_display.slider.update_handle_position()
 
         # Update the trail
         self.update_trail()
@@ -550,17 +541,12 @@ class Visualization:
         )
         self.screen.blit(help_text, (10, self.state.height - 30))
 
-        # Draw sliders
-        # for slider in self.sliders:
-        #     slider.draw(self.screen, self.small_font)
-
         self.info.draw(screen=self.screen, font=self.small_font)
 
     def draw_info(self) -> None:
         actual_fps = 1 / self.last_frame_time
         sim_speed_text = self.small_font.render(
-            f"FPS: {actual_fps:.0f} |"
-            + f" Progress: {self.frame}/{self.sim.steps}",
+            f"FPS: {actual_fps:.0f}",
             True,
             VisC.white,
         )
