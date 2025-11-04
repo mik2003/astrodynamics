@@ -35,5 +35,4 @@ class VisC:
         value_display_height - value_display_padding - value_modifier_height
     )
 
-    # Memory consts
-    max_trail_points = T.a // T.h
+    max_trail_points = T.a // T.h  # Avoid memory allocation errors

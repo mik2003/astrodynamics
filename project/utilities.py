@@ -15,11 +15,11 @@ A = npt.NDArray[np.float64]
 class T:
     """Time in [s]"""
 
-    s = 1  # Second
-    m = 60  # Minute
-    h = 3600  # Hour
-    d = 86400  # Day
-    a = 31557600  # Annum
+    s = 1.0  # Second
+    m = 60.0  # Minute
+    h = 3600.0  # Hour
+    d = 86400.0  # Day
+    a = 31557600.0  # Annum
 
 
 @dataclass(frozen=True)
@@ -141,6 +141,20 @@ class ValueUnitToStr:
             return str_format.format(value / T.m) + " m"
         else:
             return str_format.format(value) + " s"
+
+    @staticmethod
+    def s_per_s(value: float, str_format: str = "{:.2f}") -> str:
+        """Seconds"""
+        if value >= T.a:
+            return str_format.format(value / T.a) + " years/s"
+        elif value >= T.d:
+            return str_format.format(value / T.d) + " days/s"
+        elif value >= T.h:
+            return str_format.format(value / T.h) + " hours/s"
+        elif value >= T.m:
+            return str_format.format(value / T.m) + " mins/s"
+        else:
+            return str_format.format(value) + " s/s"
 
     @staticmethod
     def m(value: float, str_format: str = "{:.2e}") -> str:

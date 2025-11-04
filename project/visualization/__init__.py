@@ -24,7 +24,7 @@ class VisualizationState:
     scale = 1e-9  # [px/m]
     trail_step_time = T.d  # [s]
     trail_length_time = T.a  # [s]
-    speed = 1.0  # Playback speed [days/s]
+    speed = T.d  # Playback speed [s/s]
     rotation_z = 0.0  # Rotation in-plane [rad]
     rotation_x = 0.0  # Rotation out-of-plane [rad]
 
@@ -82,7 +82,9 @@ class Visualization:
         )  # Number of positions to keep in trail
 
     def place_info(self) -> None:
-        self.info.y = self.state.height - 150
+        self.info.y = (
+            self.state.height - self.info.n * VisC.value_display_height - 25
+        )
 
     def create_sliders(self):
         """Create sliders for trail parameters"""
@@ -118,17 +120,26 @@ class Visualization:
         # self.sliders = [trail_step_slider, trail_time_slider]
 
         self.info.add_value_display(
-            min_value=1e-6,
-            max_value=1e15,
-            initial_value=VisC.trail_step_time,
+            min_value=0.0,
+            max_value=self.sim.time,
+            initial_value=T.d,
+            label="Speed",
+            modifiers=["/10", "/1.1", "*1.1", "*10"],
+            unit="s_per_s",
+        )
+
+        self.info.add_value_display(
+            min_value=self.sim.dt,
+            max_value=self.sim.time,
+            initial_value=self.sim.dt,
             label="Trail Step",
             modifiers=["/10", "/1.1", "*1.1", "*10"],
             unit="s",
         )
         self.info.add_value_display(
-            min_value=1e-6,
-            max_value=1e15,
-            initial_value=VisC.trail_length_time,
+            min_value=self.sim.dt,
+            max_value=self.sim.time,
+            initial_value=self.sim.dt,  # start with no trail
             label="Trail Length",
             modifiers=["/10", "/1.1", "*1.1", "*10"],
             unit="s",
@@ -136,33 +147,16 @@ class Visualization:
 
         self.place_info()
 
-    def update_trail_parameters(self):
+    def update_parameters(self):
         """Update trail parameters from slider values"""
         trail_step_changed = False
         trail_time_changed = False
 
-        # for slider in self.sliders:
-        #     if slider.label.startswith("Trail Step"):
-        #         if slider.val != self.state.trail_step_time:
-        #             if slider.val <= self.state.trail_length_time:
-        #                 self.state.trail_step_time = slider.val
-        #                 self.trail_step = self.calculate_trail_step()
-        #             else:
-        #                 slider.val = self.state.trail_length_time
-        #                 slider.update_handle_position()
-        #             trail_step_changed = True
-
-        #     elif slider.label.startswith("Trail Length"):
-        #         if slider.val != self.state.trail_length_time:
-        #             if slider.val >= self.state.trail_step_time:
-        #                 self.state.trail_length_time = slider.val
-        #             else:
-        #                 slider.val = self.state.trail_step_time
-        #                 slider.update_handle_position()
-        #             trail_time_changed = True
-
         for value_display in self.info.value_displays:
-            if value_display.label == "Trail Step":
+            if value_display.label == "Speed":
+                self.state.speed = value_display.val
+
+            elif value_display.label == "Trail Step":
                 if value_display.val != self.state.trail_step_time:
                     # Value changed
                     if value_display.val <= self.state.trail_length_time:
@@ -264,7 +258,7 @@ class Visualization:
 
         # Event handling for quit, manual reset, and mouse click
         # slider_changed = False
-        info_changed = False
+        info_changed = self.frame == 0
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.state.running = False
@@ -296,7 +290,7 @@ class Visualization:
                     self.state.rotation_z = 0
                     self.focus_body_idx = None
                     self.trail_focus_body_idx = None
-                    self.state.speed = 1
+                    self.state.speed = T.d
                 if event.key == pygame.K_h:
                     self.ui_visible = (self.ui_visible - 1) % 3
                 self.cache.rebuild_trail = True
@@ -346,7 +340,7 @@ class Visualization:
         #     self.cache.rebuild_trail = True
 
         if info_changed:
-            self.update_trail_parameters()
+            self.update_parameters()
             self.cache.rebuild_relative_trail = True
             self.cache.rebuild_trail = True
 
@@ -379,8 +373,7 @@ class Visualization:
         self.frame_t0 = current_time
 
         # Calculate how many simulation steps to advance
-        days_to_advance = self.state.speed * real_time_elapsed
-        seconds_to_advance = days_to_advance * T.d
+        seconds_to_advance = self.state.speed * real_time_elapsed
 
         total_steps = seconds_to_advance / self.sim.dt + self._fractional_steps
         steps_to_advance = int(total_steps)
@@ -566,7 +559,7 @@ class Visualization:
     def draw_info(self) -> None:
         actual_fps = 1 / self.last_frame_time
         sim_speed_text = self.small_font.render(
-            f"Sim speed: {self.state.speed:.2f} days/s | FPS: {actual_fps:.0f} |"
+            f"FPS: {actual_fps:.0f} |"
             + f" Progress: {self.frame}/{self.sim.steps}",
             True,
             VisC.white,
