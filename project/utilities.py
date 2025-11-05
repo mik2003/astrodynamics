@@ -175,3 +175,8 @@ class ValueUnitToStr:
         #     return str_format.format(value / 1e-2) + " cm"
         else:
             return str_format.format(value / 1e-3) + " mm"
+
+    @staticmethod
+    def m_per_px(value: float, str_format: str = "{:.2e}") -> str:
+        """Meters_per_px"""
+        return ValueUnitToStr.m(value=value, str_format=str_format) + "/px"

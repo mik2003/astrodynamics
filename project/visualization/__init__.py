@@ -11,17 +11,18 @@ from project.data import A
 from project.simulation import Simulation
 from project.utilities import T, ValueUnitToStr
 from project.visualization.constants import VisC
-from project.visualization.elements import InfoDisplay, Slider
+from project.visualization.elements import InfoDisplay
 
 
 @dataclass
 class VisualizationState:
     running = True
     fullscreen = False
+    paused = False
 
     width = 800  # [px]
     height = 600  # [px]
-    scale = 1e-9  # [px/m]
+    scale = 1e9  # [m/px]
     trail_step_time = 1.0  # [s]
     trail_length_time = 1.0  # [s]
     speed = T.d  # Playback speed [s/s]
@@ -35,6 +36,7 @@ class VisualizationCache:
     trail_frame: int = 0  # frames from last trail point
     rebuild_trail = True
     rebuild_relative_trail = True
+    speed: float
 
 
 class Visualization:
@@ -107,6 +109,16 @@ class Visualization:
         )
 
         self.info.add_value_display(
+            min_value=sys.float_info.min,
+            max_value=sys.float_info.max,
+            initial_value=self.state.scale,
+            label="Scale",
+            modifiers=["/10", "/1.1", "*1.1", "*10"],
+            unit="m_per_px",
+            str_format="{:.2e}",
+        )
+
+        self.info.add_value_display(
             min_value=self.sim.dt,
             max_value=self.sim.time,
             initial_value=self.state.trail_step_time,
@@ -139,7 +151,13 @@ class Visualization:
                     self.cache.rebuild_trail = True
 
             elif value_display.label == "Speed":
-                self.state.speed = value_display.val
+                if self.state.paused:
+                    self.cache.speed = value_display.val
+                else:
+                    self.state.speed = value_display.val
+
+            elif value_display.label == "Scale":
+                self.state.scale = value_display.val
 
             elif value_display.label == "Trail Step":
                 if value_display.val != self.state.trail_step_time:
@@ -244,16 +262,17 @@ class Visualization:
     def handle_input(self) -> None:
         # Continuous key press handling
         keys = pygame.key.get_pressed()
+
         if keys[pygame.K_RIGHT]:
             self.state.speed *= 1.01
         if keys[pygame.K_LEFT]:
             self.state.speed /= 1.01
 
         if keys[pygame.K_UP]:
-            self.state.scale *= 1.01
+            self.state.scale /= 1.01
             self.cache.rebuild_trail = True
         if keys[pygame.K_DOWN]:
-            self.state.scale /= 1.01
+            self.state.scale *= 1.01
             self.cache.rebuild_trail = True
 
         # Rotate view left/right (Z axis) and tilt up/down (X axis)
@@ -270,6 +289,9 @@ class Visualization:
             self.state.rotation_x += 0.02
             self.cache.rebuild_trail = True
 
+        if any(keys):
+            self.update_info_display()
+
         # Event handling for quit, manual reset, and mouse click
         info_changed = self.frame == 0
         for event in pygame.event.get():
@@ -284,9 +306,9 @@ class Visualization:
                 self.place_info()
             elif event.type == pygame.MOUSEWHEEL:
                 if event.y > 0:
-                    self.state.scale *= 1.05
-                elif event.y < 0:
                     self.state.scale /= 1.05
+                elif event.y < 0:
+                    self.state.scale *= 1.05
                 self.cache.rebuild_trail = True
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_F11:
@@ -299,7 +321,8 @@ class Visualization:
                     self.reset_parameters()
                 if event.key == pygame.K_h:
                     self.ui_visible = not self.ui_visible
-                self.cache.rebuild_trail = True
+                if event.key == pygame.K_SPACE:
+                    self.pause()
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 mouse_x, mouse_y = event.pos
                 # body_clicked = False
@@ -348,6 +371,25 @@ class Visualization:
                 self.screen = pygame.display.set_mode(
                     (self.state.width, self.state.height), pygame.RESIZABLE
                 )
+
+        self.cache.rebuild_trail = True
+
+    def update_info_display(self):
+        """Update value display parameters from value displays"""
+        for value_display in self.info.value_displays:
+            if value_display.label == "Speed":
+                value_display.val = self.state.speed
+            elif value_display.label == "Scale":
+                value_display.val = self.state.scale
+
+    def pause(self) -> None:
+        if not self.state.paused:
+            self.state.paused = True
+            self.cache.speed = self.state.speed
+            self.state.speed = 0
+        else:
+            self.state.paused = False
+            self.state.speed = self.cache.speed
 
     def advance_frame(self) -> None:
         # Calculate real time elapsed since last frame
@@ -479,7 +521,7 @@ class Visualization:
     def draw_axes(self) -> None:
         # Draw axis system (X: red, Y: green, Z: blue)
         axis_length = (
-            50 / self.state.scale
+            50 * self.state.scale
         )  # world units, so it scales with zoom
         axes = (
             np.array(
@@ -517,7 +559,7 @@ class Visualization:
         bar_x2 = self.state.width - margin
         bar_y = self.state.height - margin
 
-        length = bar_px / self.state.scale
+        length = bar_px * self.state.scale
         pygame.draw.line(
             self.screen,
             bar_color,
@@ -565,8 +607,8 @@ class Visualization:
         y_tilt = y_rot * cos_x - z * sin_x
         # z_tilt = y_rot * sin_x + z * cos_x
         result = np.empty_like(pos)
-        result[:, 0, :] = self.state.width // 2 + x_rot * self.state.scale
-        result[:, 1, :] = self.state.height // 2 - y_tilt * self.state.scale
+        result[:, 0, :] = self.state.width // 2 + x_rot / self.state.scale
+        result[:, 1, :] = self.state.height // 2 - y_tilt / self.state.scale
         result[:, 2, :] = 0  # Z (2D projection)
         return result.astype(int)
 
@@ -582,7 +624,7 @@ class Visualization:
         sin_x = np.sin(self.state.rotation_x)
         y_tilt = y_rot * cos_x - z * sin_x
         # z_tilt = y_rot * sin_x + z * cos_x  # not used for 2D
-        return int(center[0] + x_rot * scale), int(center[1] - y_tilt * scale)
+        return int(center[0] + x_rot / scale), int(center[1] - y_tilt / scale)
 
     def update_relative_trail_cache(self) -> None:
         """Update the relative trail cache with new positions."""

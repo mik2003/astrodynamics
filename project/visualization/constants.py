@@ -13,7 +13,7 @@ class VisC:
     # Defaults for VisualizaitionState
     width = 800  # [px]
     height = 600  # [px]
-    scale = 1e-9  # [px/m]
+    scale = 1e9  # [m/px]
     trail_step_time = T.d  # [s]
     trail_length_time = T.a  # [s]
     speed = 1.0  # Playback speed [days/s]

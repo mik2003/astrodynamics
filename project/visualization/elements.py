@@ -341,12 +341,7 @@ class ValueModifier:
     ) -> bool:
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             if self.rect.collidepoint(event.pos):
-                old_value = display.val
                 display.val = self.apply(display.val)
-                print(
-                    f"{display.label}: {old_value:.2f} -> {display.val:.2f} "
-                    f"(using {self.label})"
-                )
                 return True
         return False
 
