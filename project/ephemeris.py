@@ -132,6 +132,7 @@ class TargetBodies:
         "Mercury",
         "Venus",
         "Earth",
+        "Moon",
         "Mars",
         "Jupiter",
         "Saturn",
@@ -746,11 +747,11 @@ def get_latest_horizons_file(
 
 
 if __name__ == "__main__":
-    target = "solar_system_moons"
+    target = "solar_system"
     create_solar_system_data(
         target_bodies=getattr(TargetBodies, target),
         center_body="@0",  # Solar System Barycenter
-        epoch="2025-10-17 12:00:00",
+        epoch="2025-10-18 12:00:00",
         output_filename=target,
         email_addr="michelangelosecondo+horizons@gmail.com",
         use_existing=False,  # Set to True after first run to use cached data
