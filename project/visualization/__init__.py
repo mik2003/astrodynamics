@@ -2,7 +2,6 @@ import sys
 import time
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import List
 
 import numpy as np
 import pygame
@@ -463,13 +462,14 @@ class Visualization:
 
     def draw_bodies(self) -> None:
         screen_pos = self.cache.trail[-1, :, :]
+        draw_flag = self.is_on_screen()
 
         for i in range(self.sim.num_bodies):
             color = VisC.colors[i % len(VisC.colors)]
 
             # Only draw if the body is on screen
             screen_pos_i = list(screen_pos[:2, i])
-            if self.is_on_screen(screen_pos_i):
+            if draw_flag[i]:
                 if self.cache.trail.shape[0] > 1:
                     lines_list = list(map(tuple, self.cache.trail[:, 0:2, i]))
                     pygame.draw.aalines(
@@ -791,8 +791,15 @@ class Visualization:
         self.cache.trail = new_cache
         self.cache.rebuild_trail = False
 
-    def is_on_screen(self, pos, margin=100) -> bool:
-        return (
-            0 - margin <= pos[0] <= self.state.width + margin
-            and 0 - margin <= pos[1] <= self.state.height + margin
+    def is_on_screen(self) -> A:
+        x_coords = self.cache.trail[:, 0, :]
+        y_coords = self.cache.trail[:, 1, :]
+
+        on_screen = (
+            (x_coords >= 0)
+            & (x_coords <= self.state.width)
+            & (y_coords >= 0)
+            & (y_coords <= self.state.height)
         )
+
+        return np.any(on_screen, axis=0)
