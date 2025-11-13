@@ -402,31 +402,74 @@ def safe_json_parse(response_text: str):
         raise e
 
 
-def extract_gravitational_parameter(result_text: str) -> float | None:
+def extract_physical_parameters(
+    result_text: str,
+) -> Tuple[float | None, float | None]:
     """
-    Extract GM (gravitational parameter) from Horizons result text.
-    Returns value in m^3/s^2.
+    Extract GM (gravitational parameter) and radius from Horizons result text.
+    Returns (gm_m3_s2, radius_m) where GM is in m^3/s^2 and radius in meters.
     """
+    gm_m3_s2 = None
+    radius_m = None
+
     # Look for GM pattern in the result text
     gm_patterns = [
+        r"GM, km\^3/s\^2\s+=\s+([\d.+-E]+)",
         r"GM \(km\^3/s\^2\)\s*=\s*([\d.+-E]+)",
-        r"GM,\s*km\^3/s\^2\s*:\s*([\d.+-E]+)",
         r"GM\s*=\s*([\d.+-E]+)\s*km\^3/s\^2",
     ]
 
     for pattern in gm_patterns:
         match = re.search(pattern, result_text)
         if match:
-            gm_km3_s2 = float(match.group(1))
+            gm_value = match.group(1)
+            # Handle GM values (they don't seem to have uncertainty)
+            gm_km3_s2 = float(gm_value)
             # Convert from km^3/s^2 to m^3/s^2
             gm_m3_s2 = gm_km3_s2 * 1e9
             print(
                 f"   ✅ Extracted GM: {gm_km3_s2} km³/s² → {gm_m3_s2:.2e} m³/s²"
             )
-            return gm_m3_s2
+            break
 
-    print("   ⚠️  GM not found in response, using standard value")
-    return None
+    # Look for radius pattern in the result text - FIXED to handle uncertainty
+    radius_patterns = [
+        # Patterns with uncertainty
+        r"Vol\. Mean Radius \(km\)\s+=\s+([\d.]+?)\+?-?[\d.]*\s",  # "6371.01+-0.02"
+        r"Mean radius\s*=\s*([\d.]+?)\+?-?[\d.]*\s*km",  # "2439.4+-0.1 km"
+        r"Radius,\s*km\s*:\s*([\d.]+?)\+?-?[\d.]*\s",  # "6051.84+-0.01"
+        r"Radius\s*\(km\)\s*=\s*([\d.]+?)\+?-?[\d.]*\s",  # "3389.92+-0.04"
+        # Patterns without uncertainty
+        r"Vol\. mean radius,\s*km\s*=\s*([\d.]+)\s*$",  # "Vol. mean radius, km  = 695700"
+        r"Vol\. Mean Radius,\s*km\s*=\s*([\d.]+)\s*$",  # Alternative capitalization
+        r"Mean radius,\s*km\s*=\s*([\d.]+)\s*$",  # "Mean radius, km = 695700"
+        r"Radius,\s*km\s*=\s*([\d.]+)\s*$",  # "Radius, km = 695700"
+    ]
+
+    for pattern in radius_patterns:
+        match = re.search(pattern, result_text)
+        if match:
+            radius_value = match.group(1)
+            try:
+                radius_km = float(radius_value)
+                # Convert from km to meters
+                radius_m = radius_km * 1000
+                print(
+                    f"   ✅ Extracted radius: {radius_km} km → {radius_m:.2e} m"
+                )
+                break
+            except ValueError as e:
+                print(
+                    f"   ⚠️  Could not convert radius value '{radius_value}': {e}"
+                )
+                continue
+
+    if gm_m3_s2 is None:
+        print("   ⚠️  GM not found in response")
+    if radius_m is None:
+        print("   ⚠️  Radius not found in response")
+
+    return gm_m3_s2, radius_m
 
 
 def extract_ephemeris_data(
@@ -539,7 +582,7 @@ def fetch_body_data(
         "step_size": step_size,
     }
 
-    # First request to get physical data (GM)
+    # First request to get physical data (GM and radius)
     print("📡 Requesting physical data...")
     response = horizons_request(**request_params)
     raw_data = safe_json_parse(response.text)
@@ -548,16 +591,24 @@ def fetch_body_data(
     if raw_data.get("error"):
         raise ValueError(f"Horizons API error: {raw_data['error']}")
 
-    # Extract GM
-    gm_m3_s2 = extract_gravitational_parameter(raw_data["result"])
+    # Extract GM and radius
+    gm_m3_s2, radius_m = extract_physical_parameters(raw_data["result"])
 
-    # Use standard GM if not found in response
+    # Use standard values if not found in response
     if gm_m3_s2 is None:
         gm_m3_s2 = STANDARD_MU.get(body_name)
         if gm_m3_s2:
             print(f"   📋 Using standard GM: {gm_m3_s2:.2e} m³/s²")
         else:
             raise ValueError(f"Could not determine GM for {body_name}")
+
+    if radius_m:
+        print(f"   📋 Using radius: {radius_m:.2e} m")
+    else:
+        print(
+            f"   ⚠️  Could not determine radius for {body_name}, setting to 0"
+        )
+        radius_m = 0.0
 
     # Second request to get ephemeris data
     print("📡 Requesting ephemeris data...")
@@ -587,6 +638,7 @@ def fetch_body_data(
     return {
         "name": body_name,
         "mu": gm_m3_s2,
+        "radius": radius_m,  # Add radius here
         "r_0": position_m,
         "v_0": velocity_m_s,
     }

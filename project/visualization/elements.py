@@ -113,13 +113,16 @@ class InfoDisplay:
             changed = changed or value_display.handle_event(event=event)
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             if self.handle_rect.collidepoint(event.pos):
-                if self.show:
-                    self.show = False
-                    self.x = self.x - self.rect.width
-                else:
-                    self.show = True
-                    self.x = self.x + self.rect.width
+                self.toggle_show()
         return changed
+
+    def toggle_show(self) -> None:
+        if self.show:
+            self.show = False
+            self.x = self.x - self.rect.width
+        else:
+            self.show = True
+            self.x = self.x + self.rect.width
 
 
 class ValueDisplay:

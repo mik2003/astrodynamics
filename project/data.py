@@ -28,6 +28,8 @@ class Body(BaseModel):
     r_0: Vector3 | None = None
     v_0: Vector3 | None = None
 
+    radius: float | None = None
+
     model_config = dict(arbitrary_types_allowed=True)
 
     @field_validator("r_0", "v_0", mode="before")

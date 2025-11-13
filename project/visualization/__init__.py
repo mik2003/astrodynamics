@@ -135,6 +135,7 @@ class Visualization:
         )
 
         self.place_info()
+        self.info.toggle_show()
 
     def update_parameters(self):
         """Update trail parameters from value displays"""
@@ -476,13 +477,22 @@ class Visualization:
                         self.screen, color, False, lines_list, 1
                     )
                 # Draw current position
-                pygame.draw.circle(self.screen, color, screen_pos_i, 3)
-                if self.sim.body_list[i].name and self.ui_visible > 0:
+                actual_radius = self.sim.body_list[i].radius
+                actual_radius = (
+                    actual_radius if actual_radius is not None else 0.0
+                )
+                radius = max(
+                    3,
+                    int(actual_radius / self.state.scale),
+                )
+                pygame.draw.circle(self.screen, color, screen_pos_i, radius)
+                if self.sim.body_list[i].name and self.ui_visible:
                     text = self.small_font.render(
                         self.sim.body_list[i].name, True, VisC.white
                     )
                     self.screen.blit(
-                        text, (screen_pos_i[0] + 15, screen_pos_i[1] - 10)
+                        text,
+                        (screen_pos_i[0] + 12 + radius, screen_pos_i[1] - 10),
                     )
 
     def draw_time(self) -> None:
