@@ -105,7 +105,7 @@ def datetime_to_jd(dt: datetime) -> float:
     return jd_day + fractional_day
 
 
-def print_progress(i: int, n: int, start_time: float):
+def print_progress(i: int, n: int, start_time: float) -> None:
     progress = int(i / n * 50)
     bar = "[" + "#" * progress + "-" * (50 - progress) + "]"
     elapsed = time.time() - start_time
