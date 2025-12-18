@@ -65,10 +65,10 @@ requires = ["setuptools>=80", "setuptools_scm[toml]>=8"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools_scm]
-# Writes version to a file so you can access it in code
-write_to = "project/_version.py"
+write_to = "src/project/_version.py"
 
 [tool.setuptools]
+package-dir = { "" = "src" }
 packages = ["project"]
 
 # --- PROJECT METADATA ---
