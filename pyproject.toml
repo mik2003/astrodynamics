@@ -90,7 +90,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["ruff", "colorama", "coverage", "mypy", "pytest", "pytest-cov"]
+dev = ["ruff", "colorama", "coverage", "mypy"]
 test = ["pytest", "pytest-cov"]
 types = ["types-requests", "types-setuptools"]
 

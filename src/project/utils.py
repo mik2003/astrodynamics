@@ -1,8 +1,8 @@
 import os
-import pathlib
 import time
 from dataclasses import dataclass
 from datetime import datetime
+from pathlib import Path
 from typing import List
 
 import numpy as np
@@ -40,15 +40,19 @@ def camel_to_snake(name: str) -> str:
 
 
 class Dir:
-    """Directories."""
+    """Paths relative to the project root."""
 
-    main_dir = pathlib.Path(__file__).parent.absolute()
-    data_dir = pathlib.Path(main_dir).parent.absolute().joinpath("data")
+    # File where this class is defined
+    _current_file = Path(__file__).resolve()
+
+    # src/project/... -> project root = two levels up from src/project
+    root = _current_file.parents[2]
+
+    # Data directory at the project root
+    data = root / "data"
 
 
-def append_positions_npy(
-    filename: pathlib.Path, positions_buffer: np.ndarray
-) -> None:
+def append_positions_npy(filename: Path, positions_buffer: np.ndarray) -> None:
     """
     Append positions to a binary file.
     positions_buffer: shape (buffer_size, num_bodies, 3)
@@ -94,13 +98,7 @@ def datetime_to_jd(dt: datetime) -> float:
 
     a = year // 100
     b = 2 - a + a // 4
-    jd_day = (
-        int(365.25 * (year + 4716))
-        + int(30.6001 * (month + 1))
-        + day
-        + b
-        - 1524.5
-    )
+    jd_day = int(365.25 * (year + 4716)) + int(30.6001 * (month + 1)) + day + b - 1524.5
 
     return jd_day + fractional_day
 
@@ -118,7 +116,7 @@ def print_progress(i: int, n: int, start_time: float) -> None:
         est_str = f" | ETA: {hrs:02d}:{mins:02d}:{secs:02d}"
     else:
         est_str = ""
-    print(f"\rProgress {bar} {i/n*100:.2f}%{est_str}", end="")
+    print(f"\rProgress {bar} {i / n * 100:.2f}%{est_str}", end="")
 
 
 def print_done() -> None:

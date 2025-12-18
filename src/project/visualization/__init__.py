@@ -8,7 +8,7 @@ import pygame
 
 from project.data import A
 from project.simulation import Simulation
-from project.utilities import T, ValueUnitToStr
+from project.utils import T, ValueUnitToStr
 from project.visualization.constants import VisC
 from project.visualization.elements import InfoDisplay
 
@@ -170,8 +170,7 @@ class Visualization:
                         ):
                             # Maximum trail points reached
                             value_display.val = (
-                                self.state.trail_length_time
-                                / VisC.max_trail_points
+                                self.state.trail_length_time / VisC.max_trail_points
                             )
                     else:
                         # Trail step is larger than trail length
@@ -190,8 +189,7 @@ class Visualization:
                         ):
                             # Maximum trail points reached
                             value_display.val = (
-                                self.state.trail_step_time
-                                * VisC.max_trail_points
+                                self.state.trail_step_time * VisC.max_trail_points
                             )
                     else:
                         # Trail length is smaller than trail step
@@ -245,9 +243,7 @@ class Visualization:
         self.clock = pygame.time.Clock()
 
         self.font = pygame.font.SysFont("Courier New", VisC.font_size)
-        self.small_font = pygame.font.SysFont(
-            "Courier New", VisC.small_font_size
-        )
+        self.small_font = pygame.font.SysFont("Courier New", VisC.small_font_size)
         self.create_value_displays()
 
         while self.state.running:
@@ -329,10 +325,7 @@ class Visualization:
 
                 for i in range(self.sim.num_bodies):
                     body_x, body_y = self.cache.trail[-1, :2, i]
-                    if (
-                        abs(mouse_x - body_x) < 10
-                        and abs(mouse_y - body_y) < 10
-                    ):
+                    if abs(mouse_x - body_x) < 10 and abs(mouse_y - body_y) < 10:
                         # body_clicked = True
 
                         if self.focus_body_idx != i:
@@ -402,9 +395,7 @@ class Visualization:
 
         total_steps = seconds_to_advance / self.sim.dt + self._fractional_steps
         steps_to_advance = int(total_steps)
-        self._fractional_steps = (
-            total_steps - steps_to_advance
-        )  # Store remainder
+        self._fractional_steps = total_steps - steps_to_advance  # Store remainder
 
         if steps_to_advance > 0:
             self.frame += steps_to_advance
@@ -473,14 +464,10 @@ class Visualization:
             if draw_flag[i]:
                 if self.cache.trail.shape[0] > 1:
                     lines_list = list(map(tuple, self.cache.trail[:, 0:2, i]))
-                    pygame.draw.aalines(
-                        self.screen, color, False, lines_list, 1
-                    )
+                    pygame.draw.aalines(self.screen, color, False, lines_list, 1)
                 # Draw current position
                 actual_radius = self.sim.body_list[i].radius
-                actual_radius = (
-                    actual_radius if actual_radius is not None else 0.0
-                )
+                actual_radius = actual_radius if actual_radius is not None else 0.0
                 radius = max(
                     3,
                     int(actual_radius / self.state.scale),
@@ -513,14 +500,14 @@ class Visualization:
                 label_str += f"{(t / secs):.0f}:"
             secs = T.d
             if t >= secs:
-                label_str += f"{(t / secs)%365.25:.0f}:"
+                label_str += f"{(t / secs) % 365.25:.0f}:"
             secs = T.h
             if t >= secs:
-                label_str += f"{(t / secs)%24:.0f}:"
+                label_str += f"{(t / secs) % 24:.0f}:"
             secs = T.m
             if t >= secs:
-                label_str += f"{(t / secs)%60:.0f}:"
-            label_str += f"{t%60:.1f}"
+                label_str += f"{(t / secs) % 60:.0f}:"
+            label_str += f"{t % 60:.1f}"
             date_text = self.font.render(
                 label_str,
                 True,
@@ -530,9 +517,7 @@ class Visualization:
 
     def draw_axes(self) -> None:
         # Draw axis system (X: red, Y: green, Z: blue)
-        axis_length = (
-            50 * self.state.scale
-        )  # world units, so it scales with zoom
+        axis_length = 50 * self.state.scale  # world units, so it scales with zoom
         axes = (
             np.array(
                 [
@@ -546,16 +531,12 @@ class Visualization:
         axis_colors = [(255, 0, 0), (0, 255, 0), (0, 128, 255)]
         axis_labels = ["X", "Y", "Z"]
         for i, axis in enumerate(axes):
-            axes_center = np.array(
-                [self.state.width - 100, self.state.height - 100, 0]
-            )
+            axes_center = np.array([self.state.width - 100, self.state.height - 100, 0])
             end = self.scale_pos(axis, axes_center, self.state.scale)
             start = (int(axes_center[0]), int(axes_center[1]))
             pygame.draw.line(self.screen, axis_colors[i], start, end, 2)
             # Draw label at the end of each axis
-            label_text = self.small_font.render(
-                axis_labels[i], True, axis_colors[i]
-            )
+            label_text = self.small_font.render(axis_labels[i], True, axis_colors[i])
             offset = 10  # pixels away from axis end
             label_pos = (end[0] + offset, end[1] + offset)
             self.screen.blit(label_text, label_pos)
@@ -577,12 +558,8 @@ class Visualization:
             (bar_x2, bar_y),
             bar_height,
         )
-        label_text = self.small_font.render(
-            ValueUnitToStr.m(length), True, VisC.white
-        )
-        label_rect = label_text.get_rect(
-            center=((bar_x1 + bar_x2) // 2, bar_y - 15)
-        )
+        label_text = self.small_font.render(ValueUnitToStr.m(length), True, VisC.white)
+        label_rect = label_text.get_rect(center=((bar_x1 + bar_x2) // 2, bar_y - 15))
         self.screen.blit(label_text, label_rect)
 
     def draw_controls(self) -> None:
@@ -659,9 +636,7 @@ class Visualization:
             end_frame = min(self.sim.steps, end_frame)
 
             if start_frame < end_frame:
-                positions_to_add = self.sim.mm[
-                    start_frame:end_frame:step, 0:3, :
-                ]
+                positions_to_add = self.sim.mm[start_frame:end_frame:step, 0:3, :]
 
                 # Apply focus offset if needed
                 if self.trail_focus_body_idx is not None:
@@ -684,9 +659,9 @@ class Visualization:
         current_pos = self.sim.mm[self.frame, 0:3, :][np.newaxis, :, :]
 
         if self.trail_focus_body_idx is not None:
-            focus_pos = self.sim.mm[
-                self.frame, 0:3, self.trail_focus_body_idx
-            ][np.newaxis, :, np.newaxis]
+            focus_pos = self.sim.mm[self.frame, 0:3, self.trail_focus_body_idx][
+                np.newaxis, :, np.newaxis
+            ]
             current_pos = current_pos - focus_pos
 
         self.cache.relative_trail[-1, :, :] = current_pos
@@ -731,9 +706,7 @@ class Visualization:
             self.cache.trail[-trail_points_to_update:, :, :] = scaled_positions
 
         # Always update the current position
-        current_relative_pos = self.cache.relative_trail[-1, :, :][
-            np.newaxis, :, :
-        ]
+        current_relative_pos = self.cache.relative_trail[-1, :, :][np.newaxis, :, :]
 
         if self.focus_body_idx is not None:
             focus_offset = current_relative_pos[-1, :, self.focus_body_idx][
@@ -742,15 +715,11 @@ class Visualization:
             current_relative_pos = current_relative_pos - focus_offset
 
         scaled_current_pos = self.scale_pos_array(current_relative_pos)
-        self.cache.trail[-1, :, :] = scaled_current_pos[
-            0
-        ]  # Remove the extra dimension
+        self.cache.trail[-1, :, :] = scaled_current_pos[0]  # Remove the extra dimension
 
     def rebuild_relative_trail_cache(self) -> None:
         new_cache = np.empty((self.trail_length, 3, self.sim.num_bodies))
-        initial_point = max(
-            0, self.frame - self.trail_length * self.trail_step + 1
-        )
+        initial_point = max(0, self.frame - self.trail_length * self.trail_step + 1)
         current_pos = self.sim.mm[
             initial_point : self.frame + 1 : self.trail_step, 0:3, :
         ]
@@ -777,9 +746,9 @@ class Visualization:
         current_pos = self.sim.mm[self.frame, 0:3, :][np.newaxis, :, :]
 
         if self.trail_focus_body_idx is not None:
-            focus_pos = self.sim.mm[
-                self.frame, 0:3, self.trail_focus_body_idx
-            ][np.newaxis, :, np.newaxis]
+            focus_pos = self.sim.mm[self.frame, 0:3, self.trail_focus_body_idx][
+                np.newaxis, :, np.newaxis
+            ]
             current_pos = current_pos - focus_pos
 
         self.cache.relative_trail[-1, :, :] = current_pos

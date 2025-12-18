@@ -6,7 +6,7 @@ from typing import Any, Dict, TypeVar
 import numpy as np
 from pydantic import BaseModel, ValidationError, field_validator
 
-from project.utilities import A, camel_to_snake
+from project.utils import A, camel_to_snake
 
 T = TypeVar("T", bound="Body")
 
@@ -98,15 +98,10 @@ class BodyList(list[Body]):
             for body_key, value in body_data.items():
                 if hasattr(value, "tolist"):  # Check if it's a numpy array
                     body_data[body_key] = value.tolist()
-                elif (
-                    isinstance(value, list)
-                    and value
-                    and hasattr(value[0], "tolist")
-                ):
+                elif isinstance(value, list) and value and hasattr(value[0], "tolist"):
                     # Handle lists of numpy arrays
                     body_data[body_key] = [
-                        v.tolist() if hasattr(v, "tolist") else v
-                        for v in value
+                        v.tolist() if hasattr(v, "tolist") else v for v in value
                     ]
 
             save_data.append(body_data)
@@ -125,9 +120,7 @@ class BodyList(list[Body]):
     @property
     def r_0(self) -> A:
         if self._r_0 is None:
-            self._r_0 = np.hstack(
-                [body.r_0 for body in self if body.r_0 is not None]
-            )
+            self._r_0 = np.hstack([body.r_0 for body in self if body.r_0 is not None])
         return self._r_0
 
     @r_0.setter
@@ -137,9 +130,7 @@ class BodyList(list[Body]):
     @property
     def v_0(self) -> A:
         if self._v_0 is None:
-            self._v_0 = np.hstack(
-                [body.v_0 for body in self if body.v_0 is not None]
-            )
+            self._v_0 = np.hstack([body.v_0 for body in self if body.v_0 is not None])
         return self._v_0
 
     @v_0.setter

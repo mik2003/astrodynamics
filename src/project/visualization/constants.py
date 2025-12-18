@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from project.utilities import T
+from project.utils import T
 
 
 @dataclass(frozen=True)

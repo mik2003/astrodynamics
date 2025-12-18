@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from project.simulation import Simulation
-from project.utilities import Dir, print_done, print_progress
+from project.utils import Dir, print_done, print_progress
 
 G = 6.67430e-11
 
@@ -18,9 +18,7 @@ def calculate_energy(mm, mu, cache_file: Path | None = None):
     # Check cache first
     if cache_file and cache_file.exists():
         print("Loading energy from cache...")
-        mm = np.memmap(
-            cache_file, dtype="float64", mode="r", shape=(mm.shape[0],)
-        )
+        mm = np.memmap(cache_file, dtype="float64", mode="r", shape=(mm.shape[0],))
         return np.array(mm)
 
     n_steps, _, n_bodies = mm.shape
@@ -63,9 +61,7 @@ def calculate_energy(mm, mu, cache_file: Path | None = None):
     # Save to cache
     if cache_file:
         print(f"Saving energy to cache: {cache_file}")
-        mm = np.memmap(
-            cache_file, dtype="float64", mode="w+", shape=e_total.shape
-        )
+        mm = np.memmap(cache_file, dtype="float64", mode="w+", shape=e_total.shape)
         mm[:] = e_total[:]
         mm.flush()
 
@@ -78,9 +74,7 @@ def calculate_angular_momentum(mm, mu, cache_file: Path | None = None):
     """
     if cache_file and cache_file.exists():
         print("Loading angular momentum from cache...")
-        mm_ = np.memmap(
-            cache_file, dtype="float64", mode="r", shape=(mm.shape[0], 3)
-        )
+        mm_ = np.memmap(cache_file, dtype="float64", mode="r", shape=(mm.shape[0], 3))
         return np.array(mm_)
 
     masses_ = mu / G
@@ -109,8 +103,8 @@ if __name__ == "__main__":
 
     # Create cache filenames based on simulation parameters
     base_name = f"{sim.name}_{sim.dt}_{sim.steps}"
-    energy_cache = Dir.data_dir.joinpath(f"{base_name}_energy.bin")
-    angular_cache = Dir.data_dir.joinpath(f"{base_name}_angular.bin")
+    energy_cache = Dir.data.joinpath(f"{base_name}_energy.bin")
+    angular_cache = Dir.data.joinpath(f"{base_name}_angular.bin")
 
     # Calculate with caching
     e_total = calculate_energy(sim.mm, mu_arr, energy_cache)
@@ -125,9 +119,7 @@ if __name__ == "__main__":
     plt.figure(figsize=(12, 8))
 
     plt.subplot(2, 1, 1)
-    plt.plot(
-        t_, (h[:, 2] - h_0) / h_0 * 100, label="Specific angular momentum"
-    )
+    plt.plot(t_, (h[:, 2] - h_0) / h_0 * 100, label="Specific angular momentum")
     plt.ylabel("Change [%]")
     plt.title("Change in Angular Momentum")
     plt.legend()

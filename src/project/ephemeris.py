@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Optional, Tuple, TypedDict
 
 import requests
 
-from project.utilities import Dir, datetime_to_jd
+from project.utils import Dir, datetime_to_jd
 
 # NASA Horizons body IDs and names mapping
 # Add these to your HORIZONS_BODIES dictionary
@@ -252,9 +252,7 @@ def horizons_request(
 
     # ADD THESE TIME PARAMETERS
     if start_time:
-        params["START_TIME"] = (
-            f"'{start_time}'"  # Horizons expects quoted times
-        )
+        params["START_TIME"] = f"'{start_time}'"  # Horizons expects quoted times
     if stop_time:
         params["STOP_TIME"] = f"'{stop_time}'"
     if step_size:
@@ -326,9 +324,7 @@ def horizons_request(
             if e.response.status_code == 429:
                 if attempt < max_retries - 1:
                     wait_time = retry_delay * (2**attempt)
-                    print(
-                        f"⏳ HTTP 429 - Rate limited. Waiting {wait_time} seconds..."
-                    )
+                    print(f"⏳ HTTP 429 - Rate limited. Waiting {wait_time} seconds...")
                     time.sleep(wait_time)
                     continue
             print(f"📊 Response headers: {dict(e.response.headers)}")
@@ -356,9 +352,7 @@ def horizons_request(
                     f"Request failed after {max_retries} attempts: {e}"
                 ) from e
 
-    raise requests.exceptions.RequestException(
-        f"All {max_retries} attempts failed"
-    )
+    raise requests.exceptions.RequestException(f"All {max_retries} attempts failed")
 
 
 def safe_json_parse(response_text: str):
@@ -427,9 +421,7 @@ def extract_physical_parameters(
             gm_km3_s2 = float(gm_value)
             # Convert from km^3/s^2 to m^3/s^2
             gm_m3_s2 = gm_km3_s2 * 1e9
-            print(
-                f"   ✅ Extracted GM: {gm_km3_s2} km³/s² → {gm_m3_s2:.2e} m³/s²"
-            )
+            print(f"   ✅ Extracted GM: {gm_km3_s2} km³/s² → {gm_m3_s2:.2e} m³/s²")
             break
 
     # Look for radius pattern in the result text - FIXED to handle uncertainty
@@ -454,14 +446,10 @@ def extract_physical_parameters(
                 radius_km = float(radius_value)
                 # Convert from km to meters
                 radius_m = radius_km * 1000
-                print(
-                    f"   ✅ Extracted radius: {radius_km} km → {radius_m:.2e} m"
-                )
+                print(f"   ✅ Extracted radius: {radius_km} km → {radius_m:.2e} m")
                 break
             except ValueError as e:
-                print(
-                    f"   ⚠️  Could not convert radius value '{radius_value}': {e}"
-                )
+                print(f"   ⚠️  Could not convert radius value '{radius_value}': {e}")
                 continue
 
     if gm_m3_s2 is None:
@@ -567,9 +555,7 @@ def fetch_body_data(
         # Use current time if no epoch specified
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         start_time = current_time
-        stop_time = (datetime.now() + timedelta(hours=1)).strftime(
-            "%Y-%m-%d %H:%M:%S"
-        )
+        stop_time = (datetime.now() + timedelta(hours=1)).strftime("%Y-%m-%d %H:%M:%S")
         step_size = "1h"
 
     # Build request parameters
@@ -605,9 +591,7 @@ def fetch_body_data(
     if radius_m:
         print(f"   📋 Using radius: {radius_m:.2e} m")
     else:
-        print(
-            f"   ⚠️  Could not determine radius for {body_name}, setting to 0"
-        )
+        print(f"   ⚠️  Could not determine radius for {body_name}, setting to 0")
         radius_m = 0.0
 
     # Second request to get ephemeris data
@@ -676,9 +660,7 @@ def create_solar_system_data(
 
     for body_name in target_bodies:
         try:
-            body_data = fetch_body_data(
-                body_name, center_body, epoch, email_addr
-            )
+            body_data = fetch_body_data(body_name, center_body, epoch, email_addr)
             body_list.append(body_data)
             print(f"✅ Successfully processed {body_name}")
         except Exception as e:  # pylint: disable=broad-exception-caught
@@ -724,7 +706,7 @@ def save_horizons_data(
     Save NASA Horizons JSON data to file with proper project structure.
     """
     if data_dir is None:
-        data_dir = Dir.data_dir
+        data_dir = Dir.data
 
     if epoch:
         epoch_d = datetime.strptime(epoch, "%Y-%m-%d %H:%M:%S")
@@ -757,7 +739,7 @@ def load_horizons_data(
     Load NASA Horizons JSON data from file.
     """
     if data_dir is None:
-        data_dir = Dir.data_dir
+        data_dir = Dir.data
 
     # FIX: Check if filename is already a Path object
     if isinstance(filename, pathlib.Path):
@@ -785,7 +767,7 @@ def get_latest_horizons_file(
     Find the most recent timestamped file for a given base filename.
     """
     if data_dir is None:
-        data_dir = Dir.data_dir
+        data_dir = Dir.data
 
     pattern = f"{base_filename}_*.json"
     matching_files = list(data_dir.glob(pattern))

@@ -7,7 +7,7 @@ import random
 from datetime import UTC, datetime, timedelta
 from typing import Any, Dict, List, Optional
 
-from project.utilities import Dir, datetime_to_jd
+from project.utils import Dir, datetime_to_jd
 
 
 class FictionalSolarSystemGenerator:
@@ -165,9 +165,7 @@ class FictionalSolarSystemGenerator:
         if system_type == "standard":
             return f"{random.choice(self.system_names)} System"
         elif system_type == "numbered":
-            return (
-                f"{random.choice(self.system_names)} {random.randint(1, 999)}"
-            )
+            return f"{random.choice(self.system_names)} {random.randint(1, 999)}"
         else:
             descriptors = [
                 "Binary",
@@ -211,18 +209,14 @@ class FictionalSolarSystemGenerator:
         log_mu = random.uniform(log_mu_min, log_mu_max)
         return 10**log_mu
 
-    def generate_orbital_position(
-        self, distance_scale: float = 1.0
-    ) -> List[float]:
+    def generate_orbital_position(self, distance_scale: float = 1.0) -> List[float]:
         """
         Generate a random orbital position vector in meters.
         Uses spherical coordinates for more realistic distribution.
         """
         # Distance from center (tend toward smaller distances)
         r = (
-            random.uniform(
-                self.orbit_radius_range[0], self.orbit_radius_range[1]
-            )
+            random.uniform(self.orbit_radius_range[0], self.orbit_radius_range[1])
             * distance_scale
         )
 
@@ -277,9 +271,7 @@ class FictionalSolarSystemGenerator:
         # Normalize and scale
         vel_mag = math.sqrt(sum(x**2 for x in velocity_direction))
         if vel_mag > 0:
-            velocity = [
-                x * velocity_magnitude / vel_mag for x in velocity_direction
-            ]
+            velocity = [x * velocity_magnitude / vel_mag for x in velocity_direction]
         else:
             velocity = [velocity_magnitude, 0, 0]  # fallback
 
@@ -314,12 +306,8 @@ class FictionalSolarSystemGenerator:
             "mass": mass,
             "r_0": r_0,
             "v_0": v_0,
-            "radius": self.estimate_body_radius(
-                mass
-            ),  # Estimated physical radius
-            "color": self.generate_body_color(
-                mass
-            ),  # Visual representation color
+            "radius": self.estimate_body_radius(mass),  # Estimated physical radius
+            "color": self.generate_body_color(mass),  # Visual representation color
         }
 
     def estimate_body_radius(self, mass: float) -> float:
@@ -340,9 +328,7 @@ class FictionalSolarSystemGenerator:
         log_mass_min = math.log10(self.body_mass_range[0])
         log_mass_max = math.log10(self.body_mass_range[1])
         log_mass = math.log10(max(mass, self.body_mass_range[0]))
-        normalized_mass = (log_mass - log_mass_min) / (
-            log_mass_max - log_mass_min
-        )
+        normalized_mass = (log_mass - log_mass_min) / (log_mass_max - log_mass_min)
 
         # Color gradient from blue (small) to red (large)
         if normalized_mass < 0.33:
@@ -416,7 +402,7 @@ class FictionalSolarSystemGenerator:
         if seed is not None:
             random.seed(seed)
 
-        print(f"🌌 GENERATING FICTIONAL SOLAR SYSTEM")
+        print("🌌 GENERATING FICTIONAL SOLAR SYSTEM")
         print(f"🎯 Number of bodies: {num_bodies}")
         print(f"📏 Distance scale: {distance_scale}")
         print(f"⭐ Include central body: {include_central_body}")
@@ -444,14 +430,12 @@ class FictionalSolarSystemGenerator:
 
         # Generate orbiting bodies
         for i in range(num_bodies):
-            body = self.generate_single_body(
-                body_id, central_body_mu, distance_scale
-            )
+            body = self.generate_single_body(body_id, central_body_mu, distance_scale)
             # Remove ID from final output to match Horizons format
             body.pop("id", None)
             body_list.append(body)
             body_id += 1
-            print(f"✅ Generated body {i+1}/{num_bodies}: {body['name']}")
+            print(f"✅ Generated body {i + 1}/{num_bodies}: {body['name']}")
 
         # Generate metadata
         metadata = self.generate_metadata(
@@ -481,7 +465,7 @@ class FictionalSolarSystemGenerator:
         Save fictional solar system data to JSON file with proper naming.
         """
         if data_dir is None:
-            data_dir = Dir.data_dir
+            data_dir = Dir.data
 
         # Use epoch in filename if requested and available
         if (
@@ -543,14 +527,12 @@ def create_fictional_solar_system(
     return system_data
 
 
-def load_fictional_data(
-    filename: str, data_dir: pathlib.Path = None
-) -> Dict[str, Any]:
+def load_fictional_data(filename: str, data_dir: pathlib.Path = None) -> Dict[str, Any]:
     """
     Load fictional solar system data from JSON file.
     """
     if data_dir is None:
-        data_dir = Dir.data_dir
+        data_dir = Dir.data
 
     if not filename.endswith(".json"):
         filename += ".json"
@@ -610,9 +592,7 @@ def create_fictional_horizons_like_data(
             }
         else:
             position = generator.generate_orbital_position()
-            velocity = generator.generate_orbital_velocity(
-                position, central_mu
-            )
+            velocity = generator.generate_orbital_velocity(position, central_mu)
             body_data = {
                 "name": name,
                 "mu": mu,
@@ -655,7 +635,7 @@ if __name__ == "__main__":
     metadata = system["metadata"]
     bodies = system["body_list"]
 
-    print(f"\n📊 GENERATION SUMMARY:")
+    print("\n📊 GENERATION SUMMARY:")
     print(f"   System: {metadata.get('system_name', 'Unknown')}")
     print(f"   Total bodies: {len(bodies)}")
     print(f"   Epoch: {metadata['epoch']}")

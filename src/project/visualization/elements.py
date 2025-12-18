@@ -2,7 +2,7 @@ from typing import List
 
 import pygame
 
-from project.utilities import ValueUnitToStr
+from project.utils import ValueUnitToStr
 from project.visualization.constants import VisC
 
 
@@ -224,12 +224,8 @@ class ValueDisplay:
                 value=self.val, str_format=self.str_format
             )
         else:
-            value = self.str_format.format(self.val) + (
-                self.unit if self.unit else ""
-            )
-        value_text = font.render(
-            f"{self.label}: {value}", True, (255, 255, 255)
-        )
+            value = self.str_format.format(self.val) + (self.unit if self.unit else "")
+        value_text = font.render(f"{self.label}: {value}", True, (255, 255, 255))
         screen.blit(
             value_text,
             (
@@ -339,9 +335,7 @@ class ValueModifier:
         text_rect = mod_text.get_rect(center=self.rect.center)
         screen.blit(mod_text, text_rect)
 
-    def handle_event(
-        self, event: pygame.event.Event, display: ValueDisplay
-    ) -> bool:
+    def handle_event(self, event: pygame.event.Event, display: ValueDisplay) -> bool:
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             if self.rect.collidepoint(event.pos):
                 display.val = self.apply(display.val)
@@ -400,12 +394,8 @@ class Slider:
         )
 
     def update_handle_position(self):
-        relative_val = (self.val - self.min_value) / (
-            self.max_value - self.min_value
-        )
-        self.handle_rect.centerx = (
-            self.rect.left + relative_val * self.rect.width
-        )
+        relative_val = (self.val - self.min_value) / (self.max_value - self.min_value)
+        self.handle_rect.centerx = self.rect.left + relative_val * self.rect.width
 
     def draw(self, screen):
         # Draw slider track
@@ -416,19 +406,13 @@ class Slider:
         pygame.draw.rect(screen, (255, 255, 255), self.handle_rect)
         pygame.draw.rect(screen, (150, 150, 150), self.handle_rect, 2)
 
-    def handle_event(
-        self, event: pygame.event.Event, display: ValueDisplay
-    ) -> bool:
+    def handle_event(self, event: pygame.event.Event, display: ValueDisplay) -> bool:
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             if self.rect.collidepoint(event.pos):
                 self.dragging = True
                 return True
 
-        elif (
-            self.dragging
-            and event.type == pygame.MOUSEBUTTONUP
-            and event.button == 1
-        ):
+        elif self.dragging and event.type == pygame.MOUSEBUTTONUP and event.button == 1:
             self.dragging = False
 
         elif event.type == pygame.MOUSEMOTION and self.dragging:
@@ -436,9 +420,7 @@ class Slider:
             relative_x = max(
                 0, min(1, (event.pos[0] - self.rect.left) / self.rect.width)
             )
-            self.val = self.min_value + relative_x * (
-                self.max_value - self.min_value
-            )
+            self.val = self.min_value + relative_x * (self.max_value - self.min_value)
             self.update_handle_position()
             display.val = self.val
             return True  # Value changed

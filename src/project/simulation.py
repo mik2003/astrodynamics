@@ -4,7 +4,7 @@ from pathlib import Path
 import numpy as np
 
 from project.data import BodyList
-from project.utilities import (
+from project.utils import (
     A,
     Dir,
     append_positions_npy,
@@ -20,8 +20,8 @@ class Simulation:
         self.time = time
         self.steps = int(time / dt)
 
-        file_in = Dir.data_dir.joinpath(self.name + ".json")
-        file_traj = Dir.data_dir.joinpath(f"{self.name}_{dt}_{self.steps}.bin")
+        file_in = Dir.data.joinpath(self.name + ".json")
+        file_traj = Dir.data.joinpath(f"{self.name}_{dt}_{self.steps}.bin")
 
         # Run simulation first and save trajectory with progress tracker
         self.body_list = BodyList.load(file_in)
@@ -33,9 +33,7 @@ class Simulation:
 
         if not os.path.exists(file_traj):
             print(f"Simulating {time:.2e} seconds...")
-            simulate_n_steps(
-                self.body_list, self.steps, dt, file_traj, prnt=True
-            )
+            simulate_n_steps(self.body_list, self.steps, dt, file_traj, prnt=True)
             print("\nSimulation complete.")
 
         self.mm = np.memmap(
@@ -89,7 +87,6 @@ def a(body_list: BodyList, r: A) -> A:
     return a_mat
 
 
-
 def rk4_step(
     body_list: BodyList,
     h: float,
@@ -97,7 +94,6 @@ def rk4_step(
     buffer: A,
     step: int,
 ) -> None:
-
     k_r1, k_r2, k_r3, k_r4, k_v1, k_v2, k_v3, k_v4 = k_arrays
 
     k_r1[:] = body_list.v_0
