@@ -1,5 +1,5 @@
 from project.simulation import Simulation
-from project.visualization import Visualization
+from project.ui import Visualization
 
 if __name__ == "__main__":
     sim = Simulation(

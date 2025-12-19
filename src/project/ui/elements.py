@@ -2,8 +2,8 @@ from typing import List
 
 import pygame
 
+from project.ui.constants import VisC
 from project.utils import ValueUnitToStr
-from project.visualization.constants import VisC
 
 
 class InfoDisplay:
@@ -395,7 +395,7 @@ class Slider:
 
     def update_handle_position(self):
         relative_val = (self.val - self.min_value) / (self.max_value - self.min_value)
-        self.handle_rect.centerx = self.rect.left + relative_val * self.rect.width
+        self.handle_rect.centerx = int(self.rect.left + relative_val * self.rect.width)
 
     def draw(self, screen):
         # Draw slider track
