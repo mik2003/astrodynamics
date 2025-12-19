@@ -6,11 +6,10 @@ from datetime import datetime, timedelta
 import numpy as np
 import pygame
 
-from project.data import A
 from project.simulation import Simulation
 from project.ui.constants import VisC
 from project.ui.elements import InfoDisplay
-from project.utils import T, ValueUnitToStr
+from project.utils import A, T, ValueUnitToStr
 
 
 @dataclass

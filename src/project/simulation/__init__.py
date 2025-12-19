@@ -3,7 +3,6 @@ from pathlib import Path
 
 import numpy as np
 
-from project.data import BodyList
 from project.utils import (
     A,
     Dir,
@@ -11,6 +10,7 @@ from project.utils import (
     print_done,
     print_progress,
 )
+from project.utils.data import BodyList
 
 
 class Simulation:
