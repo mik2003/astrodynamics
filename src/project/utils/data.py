@@ -1,4 +1,3 @@
-import json
 import os
 import tomllib
 from collections.abc import Iterable
@@ -11,7 +10,6 @@ from pydantic import (
     BaseModel,
     Field,
     GetCoreSchemaHandler,
-    ValidationError,
 )
 from pydantic_core import core_schema
 
@@ -83,27 +81,6 @@ class Body(BaseModel):
 
         return body_dict
 
-    @classmethod
-    def load2(cls, body: Dict[str, Any]) -> "Body":
-        """Load mission phase."""
-        try:
-            return cls(**body)
-        except ValidationError as e:
-            print(e.errors())
-            raise
-
-    def dump2(self) -> Dict[str, Any]:
-        """Dump body"""
-        # Convert to dict first
-        body_dict = self.model_dump()
-
-        # Convert Vector3 arrays to lists
-        for key in ["r_0", "v_0"]:
-            if key in body_dict and body_dict[key] is not None:
-                body_dict[key] = body_dict[key].tolist()
-
-        return body_dict
-
 
 class BodyList(list[Body]):
     """Class to list bodies"""
@@ -157,53 +134,6 @@ class BodyList(list[Body]):
 
         with open(file_path, "wb") as f:
             tomli_w.dump(data, f)
-
-    @staticmethod
-    def load2(file_path: Path) -> "BodyList":
-        """Load mission profile from file."""
-        with open(file_path, encoding="utf-8") as f:
-            data = json.load(f)
-        try:
-            bl_raw = data["body_list"]
-            bl = BodyList([Body.load(body) for body in bl_raw])
-            bl.metadata = data["metadata"]
-            return bl
-        except ValidationError as e:
-            print(e.errors())
-            raise
-
-    def dump2(self, file_path: Path) -> None:
-        """Dump body list to file."""
-
-        # Use lowercase class name as key
-        key = camel_to_snake(self.__class__.__name__)
-
-        save_data = []
-        for body in self:
-            body_data = body.dump()  # This already converts arrays to lists
-
-            # Additional processing if needed for any remaining numpy arrays
-            for body_key, value in body_data.items():
-                if hasattr(value, "tolist"):  # Check if it's a numpy array
-                    body_data[body_key] = value.tolist()
-                elif isinstance(value, list) and value and hasattr(value[0], "tolist"):
-                    # Handle lists of numpy arrays
-                    body_data[body_key] = [
-                        v.tolist() if hasattr(v, "tolist") else v for v in value
-                    ]
-
-            save_data.append(body_data)
-
-        if not os.path.exists(file_path):
-            data = {key: save_data}
-        else:
-            with open(file_path, "r", encoding="utf-8") as f:
-                data = json.load(f)
-
-            data[key] = save_data
-
-        with open(file_path, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=4)
 
     @property
     def r_0(self) -> A:
