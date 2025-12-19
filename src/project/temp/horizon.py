@@ -1,5 +1,3 @@
-from typing import Tuple
-
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -92,9 +90,7 @@ contour1 = ax1.contourf(
 # ax1.set_yscale("log")
 ax1.set_xlabel("θ from Vertical (degrees)")
 ax1.set_ylabel("Height h (km)")
-ax1.set_title(
-    "Flat Earth Relative Error (%)\n(Spherical - Flat)/Spherical × 100%"
-)
+ax1.set_title("Flat Earth Relative Error (%)\n(Spherical - Flat)/Spherical × 100%")
 cbar1 = fig.colorbar(contour1, ax=ax1)
 contour1.set_clim(-50, 0)
 cbar1.set_label("Relative Error (%)")
@@ -151,12 +147,8 @@ for h in h_vals:
         boundary_theta.append(np.degrees(theta_max))
         boundary_h.append(h)
 
-ax1.plot(
-    boundary_theta, boundary_h, "k--", linewidth=2, label="Domain Boundary"
-)
-ax2.plot(
-    boundary_theta, boundary_h, "k--", linewidth=2, label="Domain Boundary"
-)
+ax1.plot(boundary_theta, boundary_h, "k--", linewidth=2, label="Domain Boundary")
+ax2.plot(boundary_theta, boundary_h, "k--", linewidth=2, label="Domain Boundary")
 ax1.legend()
 ax2.legend()
 
@@ -181,5 +173,5 @@ underestimate_mask = relative_err < 0
 print(f"\nFlat Earth overestimates in {np.sum(overestimate_mask)} points")
 print(f"Flat Earth underestimates in {np.sum(underestimate_mask)} points")
 print(
-    f"Ratio of overestimation: {np.sum(overestimate_mask)/np.sum(valid_mask)*100:.1f}% of valid domain"
+    f"Ratio of overestimation: {np.sum(overestimate_mask) / np.sum(valid_mask) * 100:.1f}% of valid domain"
 )

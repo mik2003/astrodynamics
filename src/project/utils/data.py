@@ -1,10 +1,19 @@
 import json
 import os
+import tomllib
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Any, Dict, TypeVar
+from typing import Annotated, Any, Dict, List, TypeVar
 
 import numpy as np
-from pydantic import BaseModel, ValidationError, field_validator
+import tomli_w
+from pydantic import (
+    BaseModel,
+    Field,
+    GetCoreSchemaHandler,
+    ValidationError,
+)
+from pydantic_core import core_schema
 
 from project.utils import A, camel_to_snake
 
@@ -12,11 +21,38 @@ T = TypeVar("T", bound="Body")
 
 
 class Vector3(np.ndarray):
-    @staticmethod
-    def __new__(cls, input_array):
-        arr = np.asarray(input_array, dtype=float).reshape(3, 1)
-        obj = np.asarray(arr).view(cls)
-        return obj
+    def __new__(cls, data: Iterable[float]) -> "Vector3":
+        arr = np.asarray(list(data), dtype=float)
+        if arr.shape != (3,):
+            raise ValueError("Vector3 must have exactly 3 elements")
+        return arr.view(cls)
+
+    def __array_finalize__(self, obj: object | None) -> None:
+        # Required for ndarray subclasses
+        if obj is None:
+            return
+
+    @classmethod
+    def __get_pydantic_core_schema__(
+        cls,
+        source_type: Any,
+        handler: GetCoreSchemaHandler,
+    ) -> core_schema.CoreSchema:
+        return core_schema.no_info_after_validator_function(
+            cls,
+            core_schema.list_schema(
+                core_schema.float_schema(),
+                min_length=3,
+                max_length=3,
+            ),
+            serialization=core_schema.plain_serializer_function_ser_schema(
+                lambda v: v.tolist(),
+                return_schema=core_schema.list_schema(core_schema.float_schema()),
+            ),
+        )
+
+
+Vector3Type = Annotated[Vector3, Field(description="3D Vector (3,)")]
 
 
 class Body(BaseModel):
@@ -25,21 +61,30 @@ class Body(BaseModel):
     name: str | None = None
     mu: float | None = None
 
-    r_0: Vector3 | None = None
-    v_0: Vector3 | None = None
+    r_0: Vector3Type | None = None
+    v_0: Vector3Type | None = None
 
     radius: float | None = None
 
-    model_config = dict(arbitrary_types_allowed=True)
-
-    @field_validator("r_0", "v_0", mode="before")
-    def validate_vector(cls, v):  # pylint: disable=no-self-argument
-        if not isinstance(v, (list, tuple)) or len(v) != 3:
-            raise ValueError("Vector must be a list of 3 elements")
-        return Vector3(v)
-
     @classmethod
     def load(cls, body: Dict[str, Any]) -> "Body":
+        """Load mission phase."""
+        return cls(**body)
+
+    def dump(self) -> Dict[str, Any]:
+        """Dump body"""
+        # Convert to dict first
+        body_dict = self.model_dump()
+
+        # Convert Vector3 arrays to lists
+        for key in ["r_0", "v_0"]:
+            if key in body_dict and body_dict[key] is not None:
+                body_dict[key] = body_dict[key].tolist()
+
+        return body_dict
+
+    @classmethod
+    def load2(cls, body: Dict[str, Any]) -> "Body":
         """Load mission phase."""
         try:
             return cls(**body)
@@ -47,7 +92,7 @@ class Body(BaseModel):
             print(e.errors())
             raise
 
-    def dump(self) -> Dict[str, Any]:
+    def dump2(self) -> Dict[str, Any]:
         """Dump body"""
         # Convert to dict first
         body_dict = self.model_dump()
@@ -63,7 +108,7 @@ class Body(BaseModel):
 class BodyList(list[Body]):
     """Class to list bodies"""
 
-    def __init__(self, value) -> None:
+    def __init__(self, value: List[Body]) -> None:
         super().__init__(value)
         self.metadata: Dict[str, str] | None = None
 
@@ -72,6 +117,49 @@ class BodyList(list[Body]):
 
     @staticmethod
     def load(file_path: Path) -> "BodyList":
+        """Load mission profile from file."""
+        with open(file_path, "rb") as f:
+            data = tomllib.load(f)
+        bl_raw = data["body_list"]
+        bl = BodyList([Body.load(body) for body in bl_raw])
+        bl.metadata = data["metadata"]
+        return bl
+
+    def dump(self, file_path: Path) -> None:
+        """Dump body list to file."""
+
+        # Use lowercase class name as key
+        key = camel_to_snake(self.__class__.__name__)
+
+        save_data = []
+        for body in self:
+            body_data = body.dump()  # This already converts arrays to lists
+
+            # Additional processing if needed for any remaining numpy arrays
+            for body_key, value in body_data.items():
+                if hasattr(value, "tolist"):  # Check if it's a numpy array
+                    body_data[body_key] = value.tolist()
+                elif isinstance(value, list) and value and hasattr(value[0], "tolist"):
+                    # Handle lists of numpy arrays
+                    body_data[body_key] = [
+                        v.tolist() if hasattr(v, "tolist") else v for v in value
+                    ]
+
+            save_data.append(body_data)
+
+        if not os.path.exists(file_path):
+            data = {key: save_data}
+        else:
+            with open(file_path, "rb") as f:
+                data = tomllib.load(f)
+
+            data[key] = save_data
+
+        with open(file_path, "wb") as f:
+            tomli_w.dump(data, f)
+
+    @staticmethod
+    def load2(file_path: Path) -> "BodyList":
         """Load mission profile from file."""
         with open(file_path, encoding="utf-8") as f:
             data = json.load(f)
@@ -84,7 +172,7 @@ class BodyList(list[Body]):
             print(e.errors())
             raise
 
-    def dump(self, file_path: Path) -> None:
+    def dump2(self, file_path: Path) -> None:
         """Dump body list to file."""
 
         # Use lowercase class name as key

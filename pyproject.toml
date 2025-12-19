@@ -87,6 +87,7 @@ dependencies = [
     "scipy",
     "pygame",
     "requests",
+    "tomli-w",
 ]
 
 [project.optional-dependencies]

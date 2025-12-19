@@ -20,7 +20,7 @@ class Simulation:
         self.time = time
         self.steps = int(time / dt)
 
-        file_in = Dir.data / (self.name + ".json")
+        file_in = Dir.data / (self.name + ".toml")
         file_traj = Dir.simulation / f"{self.name}_{dt}_{self.steps}.bin"
 
         # Run simulation first and save trajectory with progress tracker

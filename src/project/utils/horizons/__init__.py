@@ -9,8 +9,8 @@ from typing import Dict
 import numpy as np
 import requests
 
-from project.horizons.utils import Body, HorizonsParams, bodies
 from project.utils import A, Dir, T
+from project.utils.horizons.const import Body, HorizonsParams, bodies
 from project.utils.time import TimeConvert
 
 
