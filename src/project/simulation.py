@@ -20,8 +20,8 @@ class Simulation:
         self.time = time
         self.steps = int(time / dt)
 
-        file_in = Dir.data.joinpath(self.name + ".json")
-        file_traj = Dir.data.joinpath(f"{self.name}_{dt}_{self.steps}.bin")
+        file_in = Dir.data / (self.name + ".json")
+        file_traj = Dir.simulation / f"{self.name}_{dt}_{self.steps}.bin"
 
         # Run simulation first and save trajectory with progress tracker
         self.body_list = BodyList.load(file_in)

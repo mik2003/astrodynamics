@@ -3,12 +3,18 @@ import time
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import List
+from typing import List, ParamSpec
 
 import numpy as np
-import numpy.typing as npt
 
-A = npt.NDArray[np.float64]
+# Types
+A = np.typing.NDArray[np.floating]  # Array type (floating)
+A_int = np.typing.NDArray[np.integer]  # Array type (integer)
+# Union types for overloaded functions
+floatA = float | A
+intA = int | A_int
+
+P = ParamSpec("P")
 
 
 @dataclass(frozen=True)
@@ -45,11 +51,14 @@ class Dir:
     # File where this class is defined
     _current_file = Path(__file__).resolve()
 
-    # src/project/... -> project root = two levels up from src/project
-    root = _current_file.parents[2]
+    # src/project/... -> project root = three levels up from src/project/utils
+    root = _current_file.parents[3]
 
-    # Data directory at the project root
+    # Directories
     data = root / "data"
+    cache = root / "cache"
+    simulation = cache / "simulation"
+    horizons = cache / "horizons"
 
 
 def append_positions_npy(filename: Path, positions_buffer: np.ndarray) -> None:
