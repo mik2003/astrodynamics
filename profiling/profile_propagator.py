@@ -1,7 +1,7 @@
 import cProfile
 import pstats
 
-from project.simulation.model import NumbaPointMass, NumpyPointMass
+from project.simulation.model import CPPPointMass, NumbaPointMass, NumpyPointMass
 from project.simulation.propagator import Propagator
 from project.utils import Dir
 from project.utils.data import BodyList
@@ -25,6 +25,16 @@ def run_numba():
     steps = int(T.d)
 
     p = Propagator("rk4", NumbaPointMass())
+    p.propagate(dt, steps, bl)
+
+
+def run_cpp():
+    bl = BodyList.load(Dir.data / "solar_system_2460967.toml")
+
+    dt = T.s
+    steps = int(T.d)
+
+    p = Propagator("rk4", CPPPointMass())
     p.propagate(dt, steps, bl)
 
 
@@ -69,6 +79,15 @@ if __name__ == "__main__":
     profiler.dump_stats("profiling/prop_numba.prof")
 
     # -------------------------------------------------
+    # PROFILE CPP (compiled execution only)
+    # -------------------------------------------------
+    profiler = cProfile.Profile()
+    profiler.enable()
+    run_cpp()
+    profiler.disable()
+    profiler.dump_stats("profiling/prop_cpp.prof")
+
+    # -------------------------------------------------
     # QUICK CONSOLE SUMMARY (optional)
     # -------------------------------------------------
     print("Top functions (Numpy):")
@@ -76,4 +95,7 @@ if __name__ == "__main__":
     stats.strip_dirs().sort_stats("cumulative").print_stats(15)
     print("Top functions (Numba):")
     stats = pstats.Stats("profiling/prop_numba.prof")
+    stats.strip_dirs().sort_stats("cumulative").print_stats(15)
+    print("Top functions (CPP):")
+    stats = pstats.Stats("profiling/prop_cpp.prof")
     stats.strip_dirs().sort_stats("cumulative").print_stats(15)

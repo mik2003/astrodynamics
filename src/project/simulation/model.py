@@ -3,6 +3,7 @@ from typing import Any
 import numba as nb
 import numpy as np
 
+from project.simulation.cpp_force_kernel import point_mass_cpp
 from project.utils import A
 
 
@@ -21,6 +22,11 @@ class NumbaPointMass(ForceKernel):
     def __call__(self, state: A, n: int, mu: A, out: A) -> A:
         point_mass_numba(state, n, mu, out)
         return out
+
+
+class CPPPointMass(ForceKernel):
+    def __call__(self, state: A, n: int, mu: A, out: A) -> A:
+        return point_mass_cpp(state, mu)
 
 
 def point_mass_numpy(state: A, n: int, mu: A, out: A) -> None:
