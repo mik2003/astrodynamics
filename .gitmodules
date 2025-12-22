@@ -7,3 +7,6 @@
 [submodule "src/cpp/include/xtl"]
 	path = src/cpp/include/xtl
 	url = https://github.com/xtensor-stack/xtl.git
+[submodule "src/cpp/include/xtensor-python"]
+	path = src/cpp/include/xtensor-python
+	url = https://github.com/xtensor-stack/xtensor-python.git
