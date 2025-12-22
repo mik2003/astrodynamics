@@ -55,6 +55,7 @@ def a(body_list: BodyList, r: A) -> A:
 
     # Vectorized approach - compute all pairwise differences at once
     # r_i: (3, N, 1), r_j: (3, 1, N) -> r_ij: (3, N, N)
+    r = r.reshape(3, body_list.n)
     r_i = r[:, :, np.newaxis]  # Shape: (3, N, 1)
     r_j = r[:, np.newaxis, :]  # Shape: (3, 1, N)
     r_ij = r_j - r_i  # Shape: (3, N, N)
@@ -122,10 +123,12 @@ def simulate_n_steps(
     dt: float,
     filename: Path | None = None,
     prnt: bool = False,
+    buffer: A | None = None,
 ) -> None:
     import time
 
-    buffer = np.zeros((n, 9, len(body_list)))
+    if buffer is None:
+        buffer = np.zeros((n, 9, len(body_list)))
     k_arrays = [np.zeros_like(body_list.r_0) for _ in range(8)]
     start_time = time.time()
     for i in range(n):

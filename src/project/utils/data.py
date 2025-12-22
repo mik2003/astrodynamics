@@ -92,6 +92,9 @@ class BodyList(list[Body]):
         self._r_0: A | None = None
         self._v_0: A | None = None
 
+        self._mu: A | None = None
+        self._n: int | None = None
+
     @staticmethod
     def load(file_path: Path) -> "BodyList":
         """Load mission profile from file."""
@@ -154,3 +157,19 @@ class BodyList(list[Body]):
     @v_0.setter
     def v_0(self, value: A) -> None:
         self._v_0 = value
+
+    @property
+    def y_0(self) -> A:
+        return np.concatenate([self.r_0, self.v_0])
+
+    @property
+    def mu(self) -> A:
+        if self._mu is None:
+            self._mu = np.array([body.mu for body in self])
+        return self._mu
+
+    @property
+    def n(self) -> int:
+        if self._n is None:
+            self._n = len(self)
+        return self._n

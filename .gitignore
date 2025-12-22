@@ -181,3 +181,6 @@ profiling/profile_*.txt
 
 # VSCode
 .vscode/
+src/project/fast_module/_runtime/
+*.prof
+prop.txt

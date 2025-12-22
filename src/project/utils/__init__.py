@@ -61,6 +61,68 @@ class Dir:
     horizons = cache / "horizons"
 
 
+class ProgressTracker:
+    def __init__(
+        self,
+        n: int,
+        start_time: float | None = None,
+        print_step: int = 10000,
+        name: str = "Progress",
+    ) -> None:
+        """Print progress of a process with multiple steps
+
+        Parameters
+        ----------
+        n : int
+            Total number of steps
+        start_time : float
+            Initial time of process, initialization time by default
+        print_step : int
+            Number of steps between successive progress reports
+        name : str
+            Name of progress bar
+        """
+        self.n = n
+        self.start_time = start_time or time.time()
+        self.print_step = print_step
+        self.name = name
+
+    def print(self, i: int) -> None:
+        """Print progress of a process with multiple steps
+
+        Parameters
+        ----------
+        i : int
+            Current step
+        """
+        if i == self.n:
+            self.print_done()
+        elif i % self.print_step == 0:
+            progress = int(i / self.n * 50)
+            bar = "[" + "#" * progress + "-" * (50 - progress) + "]"
+            elapsed = self.elapsed
+            if i > 0:
+                est_total = elapsed / i * self.n
+                est_remain = est_total - elapsed
+                hrs = int(est_remain // 3600)
+                mins = int((est_remain % 3600) // 60)
+                secs = int(est_remain % 60)
+                est_str = f" | ETA: {hrs:02d}:{mins:02d}:{secs:02d}"
+            else:
+                est_str = ""
+            print(f"\r{self.name} {bar} {i / self.n * 100:.2f}%{est_str}", end="")
+
+    def print_done(self) -> None:
+        """Print process concluded"""
+        print(
+            f"\r{self.name} [" + "#" * 50 + f"] 100.00% | Time: {self.elapsed:.3f} s"
+        )  # Show full bar at the end
+
+    @property
+    def elapsed(self) -> float:
+        return time.time() - self.start_time
+
+
 def append_positions_npy(filename: Path, positions_buffer: np.ndarray) -> None:
     """
     Append positions to a binary file.
