@@ -6,40 +6,41 @@
 #include <array>
 #include <xtensor-python/pyarray.hpp>
 #include <xtensor/containers/xarray.hpp>
-#include <xtensor/misc/xmanipulation.hpp>
+#include <xtensor/core/xmath.hpp>
 #include <xtensor/views/xview.hpp>
 
 namespace py = pybind11;
 
-// Point-mass N-body derivative function
 xt::xarray<double> point_mass_cpp(const xt::pyarray<double>& state,
                                   const xt::pyarray<double>& mu) {
-    std::size_t n = mu.size();  // number of bodies
+    std::size_t n = mu.size();
     if (state.size() != 6 * n)
         throw std::runtime_error("State vector size mismatch");
 
-    // Acceleration array
-    xt::xarray<double> accel =
-        xt::zeros<double>(std::array<std::size_t, 2>{3, n});
+    // Separate positions and velocities
+    const std::size_t shape[2] = {n, 6};
+    auto state_reshaped = xt::reshape_view(state, shape);  // safe
 
-    // Compute accelerations
+    auto pos = xt::view(state_reshaped, xt::all(), xt::range(0, 3));
+    auto vel = xt::view(state_reshaped, xt::all(), xt::range(3, 6));
+
+    // Initialize accelerations (n,3)
+    xt::xarray<double> accel =
+        xt::zeros<double>(std::array<std::size_t, 2>{n, 3});
+
     for (std::size_t i = 0; i < n; ++i) {
         for (std::size_t j = 0; j < n; ++j) {
             if (i == j) continue;
-            auto r = xt::view(state, xt::range(3 * j, 3 * j + 3)) -
-                     xt::view(state, xt::range(3 * i, 3 * i + 3));
+            auto r = xt::view(pos, j, xt::all()) - xt::view(pos, i, xt::all());
             double dist = std::sqrt(xt::sum(r * r)());
-            xt::view(accel, xt::range(0, 3), i) +=
-                mu(j) * r / (dist * dist * dist);
+            xt::view(accel, i, xt::all()) += mu(j) * r / (dist * dist * dist);
         }
     }
 
-    // Combine velocities and accelerations into derivative
-    xt::xarray<double> dstate =
-        xt::zeros<double>(std::array<std::size_t, 2>{6 * n});
-    xt::view(dstate, xt::range(0, 3 * n)) =
-        xt::view(state, xt::range(3 * n, 6 * n));  // velocities
-    xt::view(dstate, xt::range(3 * n, 6 * n)) = xt::flatten(accel);
+    // Flatten accelerations and combine with velocities
+    xt::xarray<double> dstate(6 * n);
+    xt::view(dstate, xt::range(0, 3 * n)) = xt::flatten(accel);
+    xt::view(dstate, xt::range(3 * n, 6 * n)) = xt::flatten(vel);
 
     return dstate;
 }
@@ -51,5 +52,5 @@ PYBIND11_MODULE(_cpp_force_kernel, m) {
     m.doc() =
         "C++ point-mass N-body gravity module (header-only xtensor-python)";
     m.def("point_mass_cpp", &point_mass_cpp, "Compute N-body derivative",
-          py::arg("mu"), py::arg("state"));
+          py::arg("state"), py::arg("mu"));
 }
