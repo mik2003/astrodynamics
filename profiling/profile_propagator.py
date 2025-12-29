@@ -9,6 +9,7 @@ from project.utils.time import T
 
 
 def run_numpy():
+    print("Running Numpy...")
     bl = BodyList.load(Dir.data / "solar_system_2460967.toml")
 
     dt = T.s
@@ -16,9 +17,11 @@ def run_numpy():
 
     p = Propagator("rk4", NumpyPointMass())
     p.propagate(dt, steps, bl)
+    print("Numpy done!")
 
 
 def run_numba():
+    print("Running Numba...")
     bl = BodyList.load(Dir.data / "solar_system_2460967.toml")
 
     dt = T.s
@@ -26,9 +29,11 @@ def run_numba():
 
     p = Propagator("rk4", NumbaPointMass())
     p.propagate(dt, steps, bl)
+    print("Numba done!")
 
 
 def run_cpp():
+    print("Running C++...")
     bl = BodyList.load(Dir.data / "solar_system_2460967.toml")
 
     dt = T.s
@@ -36,9 +41,13 @@ def run_cpp():
 
     p = Propagator("rk4", CPPPointMass())
     p.propagate(dt, steps, bl)
+    print("C++ done!")
 
 
-def warmup_numba(bl):
+def warmup_numba():
+    print("Warming up Numba kernel...")
+    bl = BodyList.load(Dir.data / "solar_system_2460967.toml")
+
     kernel = NumbaPointMass()
 
     state = bl.y_0
@@ -49,16 +58,14 @@ def warmup_numba(bl):
     # ONE call is enough
     kernel(state, n, mu, out)
 
+    print("Numba warm-up done!")
+
 
 if __name__ == "__main__":
     # -------------------------------------------------
     # NUMBA WARM-UP (compile, do NOT profile)
     # -------------------------------------------------
-    bl = BodyList.load(Dir.data / "solar_system_2460967.toml")
-
-    print("Warming up Numba kernel...")
-    warmup_numba(bl)
-    print("Numba warm-up done.\n")
+    warmup_numba()
 
     # -------------------------------------------------
     # PROFILE NUMPY

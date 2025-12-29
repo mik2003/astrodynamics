@@ -78,30 +78,40 @@ def point_mass_numpy(state: A, n: int, mu: A, out: A) -> None:
 @nb.njit(fastmath=True, cache=True)
 def point_mass_numba(state: A, n: int, mu: A, out: A) -> None:
     # r' = v
-    for i in range(3 * n):
-        out[i] = state[i + 3 * n]
-
-    # positions view
-    r = state[: 3 * n].reshape(3, n)
+    for k in range(3 * n):
+        out[k] = state[k + 3 * n]
 
     # zero accelerations
-    for i in range(3 * n):
-        out[i + 3 * n] = 0.0
+    for k in range(3 * n):
+        out[k + 3 * n] = 0.0
 
-    # pairwise gravity
+    # symmetric gravity (serial, no atomics)
     for i in range(n):
-        xi, yi, zi = r[0, i], r[1, i], r[2, i]
-        for j in range(n):
-            if i == j:
-                continue
+        xi = state[3 * i]
+        yi = state[3 * i + 1]
+        zi = state[3 * i + 2]
 
-            dx = xi - r[0, j]
-            dy = yi - r[1, j]
-            dz = zi - r[2, j]
+        mi = mu[i]
+
+        for j in range(i + 1, n):
+            dx = xi - state[3 * j]
+            dy = yi - state[3 * j + 1]
+            dz = zi - state[3 * j + 2]
 
             r2 = dx * dx + dy * dy + dz * dz
-            inv_r3 = 1.0 / (r2 * np.sqrt(r2))
+            inv_r = 1.0 / np.sqrt(r2)
+            inv_r3 = inv_r * inv_r * inv_r
 
-            out[3 * i + 3 * n] -= mu[j] * dx * inv_r3
-            out[3 * i + 1 + 3 * n] -= mu[j] * dy * inv_r3
-            out[3 * i + 2 + 3 * n] -= mu[j] * dz * inv_r3
+            fx = dx * inv_r3
+            fy = dy * inv_r3
+            fz = dz * inv_r3
+
+            mj = mu[j]
+
+            out[3 * i + 3 * n] -= mj * fx
+            out[3 * i + 1 + 3 * n] -= mj * fy
+            out[3 * i + 2 + 3 * n] -= mj * fz
+
+            out[3 * j + 3 * n] += mi * fx
+            out[3 * j + 1 + 3 * n] += mi * fy
+            out[3 * j + 2 + 3 * n] += mi * fz
