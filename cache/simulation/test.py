@@ -3,7 +3,7 @@ from pathlib import Path
 import numpy as np
 
 from project.utils import Dir
-from project.utils.simstate import Memmap
+from project.utils.simstate import SimstateMemmap
 
 fname = "sun_earth_moon_2460966"
 dt = "3600"
@@ -19,7 +19,7 @@ data_bin = np.memmap(
     shape=(int(steps), 9, 3),
 )
 
-data_sim = Memmap(f_sim)
+data_sim = SimstateMemmap(f_sim)
 
 print(data_bin[0, :3, :])
 print(data_sim.r_vis[0, :])

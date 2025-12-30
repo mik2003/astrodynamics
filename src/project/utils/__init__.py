@@ -2,16 +2,22 @@ import time
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import ParamSpec
+from types import EllipsisType
+from typing import ParamSpec, Sequence, Union
 
 import numpy as np
 
 # Types
+Float = float | np.floating
+Int = int | np.integer
 FloatArray = np.typing.NDArray[np.floating]  # Array type (floating)
 IntArray = np.typing.NDArray[np.integer]  # Array type (integer)
 # Union types for overloaded functions
-FloatScalarOrArray = float | FloatArray
-IntScalarOrArray = int | IntArray
+FloatScalarOrArray = Float | FloatArray
+IntScalarOrArray = Int | IntArray
+# Indexing type
+Index = Union[int, slice, Sequence[int], IntArray, EllipsisType, None]
+
 
 P = ParamSpec("P")
 

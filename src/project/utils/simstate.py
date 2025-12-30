@@ -1,12 +1,11 @@
 import struct
 from io import BufferedReader, BufferedWriter
 from pathlib import Path
-from types import EllipsisType
-from typing import Literal, Sequence, Tuple, Union
+from typing import Literal, Tuple
 
 import numpy as np
 
-from project.utils import FloatArray, IntArray
+from project.utils import FloatArray, Index
 
 SIMSTATE_EXTENSION = ".simstate"
 SIMSTATE_FILE = "{}__{}__{}" + SIMSTATE_EXTENSION  # name, dt, steps
@@ -176,10 +175,7 @@ def simstate_view_from_state_view(y: FloatArray, n: int) -> FloatArray:
     return np.concatenate([y_r, y_v], axis=-1)  # shape = (steps, n, 6)
 
 
-Index = Union[int, slice, Sequence[int], IntArray, EllipsisType, None]
-
-
-class Memmap:
+class SimstateMemmap:
     def __init__(self, filename: Path) -> None:
         mm, (steps, bodies, state_dim, dt), t = read_simstate(filename)
         self.mm = mm
@@ -222,7 +218,7 @@ class Memmap:
 
 
 class _RVView:
-    def __init__(self, parent: "Memmap", rv: Literal["r", "v"]) -> None:
+    def __init__(self, parent: "SimstateMemmap", rv: Literal["r", "v"]) -> None:
         self._parent = parent
         self._rv = rv
 

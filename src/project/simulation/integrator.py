@@ -4,7 +4,7 @@ from typing import Callable, Concatenate
 
 import numpy as np
 
-from project.utils import FloatArray, P
+from project.utils import FloatArray, P, ProgressTracker
 
 
 class Integrator:
@@ -47,7 +47,7 @@ class Integrator:
         # Initialize full state vector
         y = np.zeros((steps, dim))
         # Change print_step for debugging
-        # progress = ProgressTracker(n=steps, print_step=10000, name="Integrating Euler")
+        progress = ProgressTracker(n=steps, print_step=10000, name="Integrating Euler")
         # Perform Euler integration
         y[0, :] = state
 
@@ -58,8 +58,8 @@ class Integrator:
             func(y[i, :], tmp, *args, **kwargs)
             y[i + 1, :] = y[i, :] + time_step * tmp
             # Uncomment for debugging
-            # progress.print(i=i)
-        # progress.print(i=steps)
+            progress.print(i=i)
+        progress.print(i=steps)
 
         return y
 
@@ -102,7 +102,7 @@ class Integrator:
         # Initialize full state vector
         y = np.zeros((steps, dim))
         # Change print_step for debugging
-        # progress = ProgressTracker(n=steps, print_step=10000, name="Integrating RK4")
+        progress = ProgressTracker(n=steps, print_step=10000, name="Integrating RK4")
         # Perform RK4 integration
         y[0, :] = state
 
@@ -119,7 +119,7 @@ class Integrator:
             func(y[i, :] + k3 * time_step, k4, *args, **kwargs)
             y[i + 1, :] = y[i, :] + time_step / 6 * (k1 + 2 * k2 + 2 * k3 + k4)
             # Uncomment for debugging
-            # progress.print(i=i)
-        # progress.print(i=steps)
+            progress.print(i=i)
+        progress.print(i=steps)
 
         return y

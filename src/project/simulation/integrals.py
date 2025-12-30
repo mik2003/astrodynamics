@@ -4,8 +4,9 @@ from pathlib import Path
 
 import numpy as np
 
-from project.utils import FloatArray, print_done, print_progress
-from project.utils.simstate import Memmap
+from project.utils import Float, FloatArray, print_done, print_progress
+from project.utils.siminteg import SIMINTEG_FILE, write_siminteg
+from project.utils.simstate import SimstateMemmap
 
 G = 6.67430e-11
 
@@ -15,10 +16,7 @@ G = 6.67430e-11
 # ============================================================================
 
 
-def _pairwise_potential_energy(
-    r: FloatArray,
-    mu: FloatArray,
-) -> float:
+def _pairwise_potential_energy(r: FloatArray, mu: FloatArray) -> Float:
     """
     Compute total gravitational potential energy for one timestep.
 
@@ -36,136 +34,167 @@ def _pairwise_potential_energy(
     """
     n = r.shape[1]
     i_idx, j_idx = np.triu_indices(n, k=1)
-
     r_i = r[:, i_idx]
     r_j = r[:, j_idx]
-
     dr = r_i - r_j
     dist = np.linalg.norm(dr, axis=0)
-
     with np.errstate(divide="ignore", invalid="ignore"):
         U: FloatArray = -(mu[i_idx] * mu[j_idx]) / (G * dist)
-
     return np.nansum(U)
 
 
 # ============================================================================
-# Energy
+# Main integrals calculation
 # ============================================================================
 
 
-def calculate_energy(
-    sim: Memmap,
+def calculate_integrals(
+    sim: SimstateMemmap,
     mu: FloatArray,
     cache_file: Path | None = None,
+    verbose: bool = True,
 ) -> FloatArray:
     """
-    Compute total energy time history.
+    Compute total energy and angular momentum time history.
 
     Parameters
     ----------
-    sim : Memmap
+    sim : SimstateMemmap
         Loaded .simstate file
     mu : (n,) array
         Gravitational parameters (G*m)
     cache_file : Path | None
-        Optional .siminteg cache
+        Optional .siminteg cache file
+    verbose : bool
+        Print progress
 
     Returns
     -------
-    (steps,) array
-        Total energy per step
+    integrals : (steps, 4) array
+        Column 0: total energy
+        Columns 1-3: angular momentum vector
     """
+    n_steps = sim.steps
+    masses = mu / G
+
+    # Use cache if available
     if cache_file and cache_file.exists():
-        mm = np.memmap(cache_file, dtype="float64", mode="r", shape=(sim.steps,))
+        if verbose:
+            print(f"Loading integrals from cache: {cache_file}")
+        mm = np.memmap(cache_file, dtype="float64", mode="r", shape=(n_steps, 4))
         return np.array(mm)
 
-    n_steps = sim.steps
-    n = sim.bodies
-
-    masses = mu / G
-    energy = np.zeros(n_steps, dtype=np.float64)
+    integrals = np.zeros((n_steps, 4), dtype=np.float64)
 
     start_time = time.time()
-    print("Calculating total energy...")
+    if verbose:
+        print("Calculating energy and angular momentum...")
 
     for t in range(n_steps):
-        if t % 10000 == 0:
+        if verbose and t % 10000 == 0:
             print_progress(t, n_steps, start_time)
 
-        r = sim.r_vis[t]  # (1,3,n)
-        v = sim.v_vis[t]
-
-        r = r[0]
-        v = v[0]
+        # Positions & velocities (shape: 3 x n)
+        r = sim.r_vis[t][0]
+        v = sim.v_vis[t][0]
 
         # Kinetic energy
-        v2 = np.sum(v * v, axis=0)
-        T = 0.5 * np.sum(masses * v2)
+        T = 0.5 * np.sum(masses * np.sum(v**2, axis=0))
 
         # Potential energy
         U = _pairwise_potential_energy(r, mu)
 
-        energy[t] = T + U
+        # Total energy
+        integrals[t, 0] = T + U
 
-    print_done()
+        # Angular momentum vector
+        p = masses[None, :] * v
+        integrals[t, 1:] = np.sum(np.cross(r, p, axis=0), axis=1)
 
+    if verbose:
+        print_done()
+
+    # Save to cache
     if cache_file:
-        mm = np.memmap(
-            cache_file,
-            dtype="float64",
-            mode="w+",
-            shape=(n_steps,),
-        )
-        mm[:] = energy
-        mm.flush()
+        if verbose:
+            print(f"\nSaving integrals to cache: {cache_file}")
+        write_siminteg(cache_file, integrals)
 
-    return energy
+    return integrals
 
 
 # ============================================================================
-# Angular momentum
+# Convenience functions
 # ============================================================================
+
+
+def calculate_energy(
+    sim: SimstateMemmap, mu: FloatArray, cache_file: Path | None = None
+) -> FloatArray:
+    """Return total energy time series"""
+    integrals = calculate_integrals(sim, mu, cache_file)
+    return integrals[:, 0]
 
 
 def calculate_angular_momentum(
-    sim: Memmap,
-    mu: FloatArray,
-    cache_file: Path | None = None,
+    sim: SimstateMemmap, mu: FloatArray, cache_file: Path | None = None
 ) -> FloatArray:
-    """
-    Compute total angular momentum vector time history.
+    """Return angular momentum time series (steps x 3)"""
+    integrals = calculate_integrals(sim, mu, cache_file)
+    return integrals[:, 1:]
 
-    Returns
-    -------
-    (steps, 3) array
-    """
-    if cache_file and cache_file.exists():
-        mm = np.memmap(cache_file, dtype="float64", mode="r", shape=(sim.steps, 3))
-        return np.array(mm)
 
-    n_steps = sim.steps
-    masses = mu / G
+if __name__ == "__main__":
+    import matplotlib.pyplot as plt
 
-    h = np.zeros((n_steps, 3), dtype=np.float64)
+    from project.simulation import Simulation
+    from project.utils import Dir
 
-    print("Calculating angular momentum...")
+    # Load simulation
+    sim = Simulation(
+        name="solar_system_moons_2460966",
+        dt=3600,
+        time=3600 * 24 * 365.25 * 100,
+    )
 
-    for t in range(n_steps):
-        r = sim.r_vis[t][0]
-        v = sim.v_vis[t][0]
+    mu_list = [body.mu for body in sim.body_list]
+    mu_arr = np.array(mu_list)
 
-        p = masses[None, :] * v
-        h[t] = np.sum(np.cross(r, p, axis=0), axis=1)
+    # Create cache filenames based on simulation parameters
+    base_name = (sim.name, sim.dt, sim.steps)
+    energy_cache = Dir.simulation / SIMINTEG_FILE.format(*base_name, "e")
+    angular_cache = Dir.simulation / SIMINTEG_FILE.format(*base_name, "h")
 
-    if cache_file:
-        mm = np.memmap(
-            cache_file,
-            dtype="float64",
-            mode="w+",
-            shape=h.shape,
-        )
-        mm[:] = h
-        mm.flush()
+    # Calculate with caching
+    e_total = calculate_energy(sim.mm, mu_arr, energy_cache)
+    h = calculate_angular_momentum(sim.mm, mu_arr, angular_cache)
 
-    return h
+    # Plot
+    h_0 = h[0, 2]
+    t_ = sim.mm.t / 3600 / 24  # convert to days
+
+    plt.figure(figsize=(12, 8))
+
+    plt.subplot(2, 1, 1)
+    plt.plot(t_, (h[:, 2] - h_0) / h_0 * 100, label="Specific angular momentum")
+    plt.ylabel("Change [%]")
+    plt.title("Change in Angular Momentum")
+    plt.legend()
+
+    plt.subplot(2, 1, 2)
+    plt.plot(
+        t_, (e_total - e_total[0]) / e_total[0] * 100, label="Total Energy", linewidth=2
+    )
+    plt.ylabel("Change [%]")
+    plt.xlabel("Time [days]")
+    plt.title("Change in Energy Components")
+    plt.legend()
+
+    plt.tight_layout()
+    plt.show()
+
+    print(f"Initial total energy: {e_total[0]:.6e}")
+    print(f"Final total energy: {e_total[-1]:.6e}")
+    print(
+        f"Energy conservation: {((e_total[-1] - e_total[0]) / e_total[0] * 100):.6f}%"
+    )

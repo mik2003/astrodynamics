@@ -6,7 +6,11 @@ import pytest
 from numpy.typing import ArrayLike
 
 from project.utils import Dir
-from project.utils.simstate import Memmap, simstate_view_from_state_view, write_simstate
+from project.utils.simstate import (
+    SimstateMemmap,
+    simstate_view_from_state_view,
+    write_simstate,
+)
 
 FILENAME_MM_TEST = Dir.test / "test__1__2.simstate"
 
@@ -82,6 +86,6 @@ def test_memmap(
 ) -> None:
     if not os.path.exists(FILENAME_MM_TEST):
         make_test_file()
-    mm = Memmap(FILENAME_MM_TEST)
+    mm = SimstateMemmap(FILENAME_MM_TEST)
     actual = getattr(mm, rv)[step, body]
     np.testing.assert_allclose(actual, np.array(expected))
