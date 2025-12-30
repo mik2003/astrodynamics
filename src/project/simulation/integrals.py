@@ -2,150 +2,170 @@
 import time
 from pathlib import Path
 
-import matplotlib.pyplot as plt
 import numpy as np
 
-from project.simulation import Simulation
-from project.utils import Dir, FloatArray, print_done, print_progress
+from project.utils import FloatArray, print_done, print_progress
+from project.utils.simstate import Memmap
 
 G = 6.67430e-11
 
 
+# ============================================================================
+# Internal helpers
+# ============================================================================
+
+
+def _pairwise_potential_energy(
+    r: FloatArray,
+    mu: FloatArray,
+) -> float:
+    """
+    Compute total gravitational potential energy for one timestep.
+
+    Parameters
+    ----------
+    r : (3, n) array
+        Positions
+    mu : (n,) array
+        Gravitational parameters (G*m)
+
+    Returns
+    -------
+    float
+        Total potential energy
+    """
+    n = r.shape[1]
+    i_idx, j_idx = np.triu_indices(n, k=1)
+
+    r_i = r[:, i_idx]
+    r_j = r[:, j_idx]
+
+    dr = r_i - r_j
+    dist = np.linalg.norm(dr, axis=0)
+
+    with np.errstate(divide="ignore", invalid="ignore"):
+        U: FloatArray = -(mu[i_idx] * mu[j_idx]) / (G * dist)
+
+    return np.nansum(U)
+
+
+# ============================================================================
+# Energy
+# ============================================================================
+
+
 def calculate_energy(
-    mm: np.memmap, mu: FloatArray, cache_file: Path | None = None
+    sim: Memmap,
+    mu: FloatArray,
+    cache_file: Path | None = None,
 ) -> FloatArray:
     """
-    Calculate total energy using vectorized operations with caching
+    Compute total energy time history.
+
+    Parameters
+    ----------
+    sim : Memmap
+        Loaded .simstate file
+    mu : (n,) array
+        Gravitational parameters (G*m)
+    cache_file : Path | None
+        Optional .siminteg cache
+
+    Returns
+    -------
+    (steps,) array
+        Total energy per step
     """
-    # Check cache first
     if cache_file and cache_file.exists():
-        print("Loading energy from cache...")
-        mm = np.memmap(cache_file, dtype="float64", mode="r", shape=(mm.shape[0],))
+        mm = np.memmap(cache_file, dtype="float64", mode="r", shape=(sim.steps,))
         return np.array(mm)
 
-    n_steps, _, n_bodies = mm.shape
+    n_steps = sim.steps
+    n = sim.bodies
 
-    # Kinetic energy (fast)
-    v_sq = np.sum(mm[:, 3:6, :] ** 2, axis=1)
     masses = mu / G
-    e_kin = 0.5 * np.sum(v_sq * masses, axis=1)
-
-    # Potential energy (slow)
-    e_pot = np.zeros(n_steps)
-    i_idx, j_idx = np.triu_indices(n_bodies, k=1)
+    energy = np.zeros(n_steps, dtype=np.float64)
 
     start_time = time.time()
-    print("Calculating energy...")
+    print("Calculating total energy...")
 
     for t in range(n_steps):
         if t % 10000 == 0:
             print_progress(t, n_steps, start_time)
 
-        r_i = mm[t, 0:3, i_idx].T
-        r_j = mm[t, 0:3, j_idx].T
-        r_diff = r_i - r_j
-        distances = np.linalg.norm(r_diff, axis=0)
-        mu_pairs = mu[i_idx] * mu[j_idx]
+        r = sim.r_vis[t]  # (1,3,n)
+        v = sim.v_vis[t]
 
-        with np.errstate(divide="ignore", invalid="ignore"):
-            potential_terms = mu_pairs / (G * distances)
-            potential_terms = np.nan_to_num(
-                potential_terms, nan=0.0, posinf=0.0, neginf=0.0
-            )
+        r = r[0]
+        v = v[0]
 
-        e_pot[t] = -np.sum(potential_terms)
+        # Kinetic energy
+        v2 = np.sum(v * v, axis=0)
+        T = 0.5 * np.sum(masses * v2)
+
+        # Potential energy
+        U = _pairwise_potential_energy(r, mu)
+
+        energy[t] = T + U
 
     print_done()
-    print("Energy calculation complete.")
 
-    e_total = e_kin + e_pot
-
-    # Save to cache
     if cache_file:
-        print(f"Saving energy to cache: {cache_file}")
-        mm = np.memmap(cache_file, dtype="float64", mode="w+", shape=e_total.shape)
-        mm[:] = e_total[:]
+        mm = np.memmap(
+            cache_file,
+            dtype="float64",
+            mode="w+",
+            shape=(n_steps,),
+        )
+        mm[:] = energy
         mm.flush()
 
-    return e_total
+    return energy
+
+
+# ============================================================================
+# Angular momentum
+# ============================================================================
 
 
 def calculate_angular_momentum(
-    mm: np.memmap, mu: FloatArray, cache_file: Path | None = None
+    sim: Memmap,
+    mu: FloatArray,
+    cache_file: Path | None = None,
 ) -> FloatArray:
     """
-    Calculate angular momentum with caching
+    Compute total angular momentum vector time history.
+
+    Returns
+    -------
+    (steps, 3) array
     """
     if cache_file and cache_file.exists():
-        print("Loading angular momentum from cache...")
-        mm_ = np.memmap(cache_file, dtype="float64", mode="r", shape=(mm.shape[0], 3))
-        return np.array(mm_)
+        mm = np.memmap(cache_file, dtype="float64", mode="r", shape=(sim.steps, 3))
+        return np.array(mm)
 
-    masses_ = mu / G
-    v_weighted = mm[:, 3:6, :] * masses_[None, None, :]
-    h = np.sum(np.cross(mm[:, 0:3, :], v_weighted, axis=1), axis=2)
+    n_steps = sim.steps
+    masses = mu / G
 
-    # Save to cache
+    h = np.zeros((n_steps, 3), dtype=np.float64)
+
+    print("Calculating angular momentum...")
+
+    for t in range(n_steps):
+        r = sim.r_vis[t][0]
+        v = sim.v_vis[t][0]
+
+        p = masses[None, :] * v
+        h[t] = np.sum(np.cross(r, p, axis=0), axis=1)
+
     if cache_file:
-        print(f"Saving angular momentum to cache: {cache_file}")
-        mm_ = np.memmap(cache_file, dtype="float64", mode="w+", shape=h.shape)
-        mm_[:] = h[:]
-        mm_.flush()
+        mm = np.memmap(
+            cache_file,
+            dtype="float64",
+            mode="w+",
+            shape=h.shape,
+        )
+        mm[:] = h
+        mm.flush()
 
     return h
-
-
-if __name__ == "__main__":
-    sim = Simulation(
-        name="solar_system_moons_2460966",
-        dt=3600,
-        time=3600 * 24 * 365.25 * 100,
-    )
-
-    mu_list = [body.mu for body in sim.body_list]
-    mu_arr = np.array(mu_list)
-
-    # Create cache filenames based on simulation parameters
-    base_name = f"{sim.name}_{sim.dt}_{sim.steps}"
-    energy_cache = Dir.data.joinpath(f"{base_name}_energy.bin")
-    angular_cache = Dir.data.joinpath(f"{base_name}_angular.bin")
-
-    # Calculate with caching
-    e_total = calculate_energy(sim.mm, mu_arr, energy_cache)
-    h = calculate_angular_momentum(sim.mm, mu_arr, angular_cache)
-
-    # Rest of plotting code remains the same...
-    h_0 = h[0, 2]
-
-    # Plotting
-    t_ = np.arange(0, sim.time, sim.dt) / 3600 / 24
-
-    plt.figure(figsize=(12, 8))
-
-    plt.subplot(2, 1, 1)
-    plt.plot(t_, (h[:, 2] - h_0) / h_0 * 100, label="Specific angular momentum")
-    plt.ylabel("Change [%]")
-    plt.title("Change in Angular Momentum")
-    plt.legend()
-
-    plt.subplot(2, 1, 2)
-    plt.plot(
-        t_,
-        (e_total - e_total[0]) / e_total[0] * 100,
-        label="Total Energy",
-        linewidth=2,
-    )
-    plt.ylabel("Change [%]")
-    plt.xlabel("Time [day]")
-    plt.title("Change in Energy Components")
-    plt.legend()
-
-    plt.tight_layout()
-    plt.show()
-
-    print(f"Initial total energy: {e_total[0]:.6e}")
-    print(f"Final total energy: {e_total[-1]:.6e}")
-    print(
-        "Energy conservation: "
-        + f"{((e_total[-1] - e_total[0]) / e_total[0] * 100):.6f}%"
-    )

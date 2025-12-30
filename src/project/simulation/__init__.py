@@ -11,8 +11,8 @@ from project.utils import (
     print_done,
     print_progress,
 )
-from project.utils.cache import SIMSTATE_FILE, Memmap
 from project.utils.data import BodyList
+from project.utils.simstate import SIMSTATE_FILE, Memmap
 
 
 class Simulation:

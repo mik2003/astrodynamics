@@ -61,7 +61,9 @@ def read_header(f: BufferedReader) -> Tuple[int, int, int, float]:
     return steps, bodies, state_dim, dt
 
 
-def write_simstate(filename: Path, data: FloatArray) -> None:
+def write_simstate(
+    filename: Path, data: FloatArray, t: FloatArray | None = None
+) -> None:
     """
     Write a complete simulation file (.simstate) from a full array.
 
@@ -72,21 +74,23 @@ def write_simstate(filename: Path, data: FloatArray) -> None:
     data : np.ndarray
         Shape (steps, bodies, state_dim), dtype float64.
     """
-    parse_simstate_filename(filename=filename)
-
     if data.ndim != 3:
         raise ValueError("data must be (steps, bodies, state_dim)")
 
     data = np.asarray(data, dtype=np.float64)
 
-    steps, bodies, state_dim, dt = validate_simstate_data(filename=filename, data=data)
+    steps, bodies, state_dim, dt = validate_simstate_data(
+        filename=filename, data=data, t=t
+    )
 
     with open(filename, "wb") as f:
         write_header(f, steps, bodies, state_dim, dt)
         data.astype(np.float64, copy=False).tofile(f)
 
 
-def read_simstate(filename: Path) -> Tuple[np.memmap, Tuple[int, int, int]]:
+def read_simstate(
+    filename: Path,
+) -> Tuple[np.memmap, Tuple[int, int, int, float], np.memmap | None]:
     """
     Read a .simstate file into memory.
 
@@ -95,12 +99,12 @@ def read_simstate(filename: Path) -> Tuple[np.memmap, Tuple[int, int, int]]:
     data : np.ndarray
         Array of shape (steps, bodies, state_dim)
     header : tuple
-        (steps, bodies, state_dim)
+        (steps, bodies, state_dim, dt)
+    t : np.ndarray | None
+        Array of shape (steps,)
     """
-    parse_simstate_filename(filename=filename)
-
     with open(filename, "rb") as f:
-        steps, bodies, state_dim = validate_simstate_file(filename=filename, file=f)
+        steps, bodies, state_dim, dt = validate_simstate_file(filename=filename, file=f)
 
     # Memmap of remaining data
     mm = np.memmap(
@@ -111,7 +115,18 @@ def read_simstate(filename: Path) -> Tuple[np.memmap, Tuple[int, int, int]]:
         shape=(steps, bodies, state_dim),
     )
 
-    return mm, (steps, bodies, state_dim)
+    if dt < 0:
+        t = np.memmap(
+            filename=filename,
+            dtype="float64",
+            mode="r",
+            offset=HEADER_SIZE + mm.nbytes,
+            shape=(steps,),
+        )
+    else:
+        t = None
+
+    return mm, (steps, bodies, state_dim, dt), t
 
 
 def parse_simstate_filename(filename: Path) -> Tuple[str, int, int]:
@@ -129,17 +144,17 @@ def parse_simstate_filename(filename: Path) -> Tuple[str, int, int]:
 
 def validate_simstate_file(
     filename: Path, file: BufferedReader
-) -> Tuple[int, int, int]:
+) -> Tuple[int, int, int, float]:
     _, dt_f, steps_f = parse_simstate_filename(filename=filename)
     steps, bodies, state_dim, dt = read_header(f=file)
-    if dt_f != dt or steps_f != steps - 1:
+    if dt_f != int(dt) or steps_f != steps - 1:
         raise ValueError("Filename does not match file header")
 
-    return steps, bodies, state_dim
+    return steps, bodies, state_dim, dt
 
 
 def validate_simstate_data(
-    filename: Path, data: FloatArray
+    filename: Path, data: FloatArray, t: FloatArray | None = None
 ) -> Tuple[int, int, int, int]:
     _, dt_f, steps_f = parse_simstate_filename(filename=filename)
     steps, bodies, state_dim = data.shape
@@ -147,6 +162,8 @@ def validate_simstate_data(
         raise ValueError(
             f"{steps - 1} actual simulation steps do not match filename's {steps_f}"
         )
+    if t is not None and t.size != steps:
+        raise ValueError("Time vector size is inconsistent with state matrix")
 
     return steps, bodies, state_dim, dt_f
 
@@ -159,22 +176,19 @@ def simstate_view_from_state_view(y: FloatArray, n: int) -> FloatArray:
     return np.concatenate([y_r, y_v], axis=-1)  # shape = (steps, n, 6)
 
 
-Index = Union[
-    int,
-    slice,
-    Sequence[int],
-    IntArray,
-    EllipsisType,
-    None,
-]
+Index = Union[int, slice, Sequence[int], IntArray, EllipsisType, None]
 
 
 class Memmap:
     def __init__(self, filename: Path) -> None:
-        mm, (steps, bodies, state_dim) = read_simstate(filename)
+        mm, (steps, bodies, state_dim, dt), t = read_simstate(filename)
         self.mm = mm
         self.steps = steps
         self.bodies = bodies
+        self.state_dim = state_dim
+        self.dt = dt
+
+        self._t = t
 
         self._r_view = _RVView(self, "r")
         self._v_view = _RVView(self, "v")
@@ -199,6 +213,12 @@ class Memmap:
     def v_vis(self) -> "_RVVisView":
         """Visualization view: (steps, 3, bodies)"""
         return self._v_vis_view
+
+    @property
+    def t(self) -> FloatArray:
+        if self._t is None:
+            return np.arange(self.steps) * self.dt
+        return self._t
 
 
 class _RVView:

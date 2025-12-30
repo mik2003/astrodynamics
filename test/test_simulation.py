@@ -6,7 +6,7 @@ import pytest
 from numpy.typing import ArrayLike
 
 from project.utils import Dir
-from project.utils.cache import Memmap, simstate_view_from_state_view, write_simstate
+from project.utils.simstate import Memmap, simstate_view_from_state_view, write_simstate
 
 FILENAME_MM_TEST = Dir.test / "test__1__2.simstate"
 

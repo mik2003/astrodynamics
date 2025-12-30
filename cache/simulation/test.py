@@ -3,7 +3,7 @@ from pathlib import Path
 import numpy as np
 
 from project.utils import Dir
-from project.utils.cache import Memmap
+from project.utils.simstate import Memmap
 
 fname = "sun_earth_moon_2460966"
 dt = "3600"

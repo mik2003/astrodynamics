@@ -3,8 +3,8 @@ from typing import Literal
 
 from project.simulation.integrator import Integrator
 from project.simulation.model import ForceKernel
-from project.utils.cache import simstate_view_from_state_view, write_simstate
 from project.utils.data import BodyList
+from project.utils.simstate import simstate_view_from_state_view, write_simstate
 
 
 class Propagator:
