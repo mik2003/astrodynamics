@@ -228,18 +228,22 @@ class _RVView:
 
     def __getitem__(self, key: Index | Tuple[Index, ...]) -> FloatArray:
         data = self._parent.mm
-
         last_dim = slice(0, 3) if self._rv == "r" else slice(3, 6)
 
-        # Normalize key into (step, body)
-        if not isinstance(key, tuple):
-            step, body = key, slice(None)
-        elif len(key) == 1:
-            step, body = key[0], slice(None)
-        else:
-            step, body = key[:2]
+        step: Index
+        body: Index
 
-        # Promote ints to slices to preserve dimensions
+        # Normalize key into (step, body)
+        if isinstance(key, tuple):
+            # Now mypy knows key is a tuple and slicing is allowed
+            if len(key) == 1:
+                step, body = key[0], slice(None)
+            else:
+                step, body = key[0], key[1]
+        else:
+            step, body = key, slice(None)
+
+        # Promote ints to slices for safe indexing
         if isinstance(step, int):
             step = slice(step, step + 1)
         if isinstance(body, int):
