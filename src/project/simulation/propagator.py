@@ -5,7 +5,7 @@ import numpy as np
 
 from project.simulation.integrator import Integrator
 from project.simulation.model import ForceKernel
-from project.utils.cache import write_simstate
+from project.utils.cache import simstate_view_from_state_view, write_simstate
 from project.utils.data import BodyList
 
 
@@ -32,6 +32,7 @@ class Propagator:
             n=body_list.n,
             mu=body_list.mu,
             out=buffer,
-        )
+        )  # y.shape = (steps, 6*bodies)
+
         if filename is not None:
-            write_simstate(filename, np.asarray(y).reshape(-1, body_list.n, 6))
+            write_simstate(filename, simstate_view_from_state_view(y, body_list.n))

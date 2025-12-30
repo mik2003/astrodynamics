@@ -150,6 +150,14 @@ def validate_simstate_data(
     return steps, bodies, state_dim, dt_f
 
 
+def simstate_view_from_state_view(y: FloatArray, n: int) -> FloatArray:
+    # Interleave positions and velocities per body
+    steps, _ = y.shape
+    y_r = y[:, : 3 * n].reshape(steps, n, 3)
+    y_v = y[:, 3 * n :].reshape(steps, n, 3)
+    return np.concatenate([y_r, y_v], axis=-1)  # shape = (steps, n, 6)
+
+
 Index = Union[
     int,
     slice,

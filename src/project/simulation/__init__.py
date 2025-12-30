@@ -8,7 +8,6 @@ from project.simulation.propagator import Propagator
 from project.utils import (
     Dir,
     FloatArray,
-    append_positions_npy,
     print_done,
     print_progress,
 )
