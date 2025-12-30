@@ -635,11 +635,11 @@ class Visualization:
             end_frame = min(self.sim.steps, end_frame)
 
             if start_frame < end_frame:
-                positions_to_add = self.sim.mm.r[start_frame:end_frame:step, :]
+                positions_to_add = self.sim.mm.r_vis[start_frame:end_frame:step, :]
 
                 # Apply focus offset if needed
                 if self.trail_focus_body_idx is not None:
-                    focus_positions = self.sim.mm.r[
+                    focus_positions = self.sim.mm.r_vis[
                         start_frame:end_frame:step, self.trail_focus_body_idx
                     ]
                     positions_to_add = positions_to_add - focus_positions
@@ -653,10 +653,10 @@ class Visualization:
                 )
 
         # Always update the very latest position
-        current_pos = self.sim.mm.r[self.frame, :]
+        current_pos = self.sim.mm.r_vis[self.frame, :]
 
         if self.trail_focus_body_idx is not None:
-            focus_pos = self.sim.mm.r[self.frame, self.trail_focus_body_idx]
+            focus_pos = self.sim.mm.r_vis[self.frame, self.trail_focus_body_idx]
             current_pos = current_pos - focus_pos
 
         self.cache.relative_trail[-1, :, :] = current_pos
@@ -715,10 +715,12 @@ class Visualization:
     def rebuild_relative_trail_cache(self) -> None:
         new_cache = np.empty((self.trail_length, 3, self.sim.num_bodies))
         initial_point = max(0, self.frame - self.trail_length * self.trail_step + 1)
-        current_pos = self.sim.mm.r[initial_point : self.frame + 1 : self.trail_step, :]
+        current_pos = self.sim.mm.r_vis[
+            initial_point : self.frame + 1 : self.trail_step, :
+        ]
 
         if self.trail_focus_body_idx is not None:
-            pos_diff = self.sim.mm.r[
+            pos_diff = self.sim.mm.r_vis[
                 initial_point : self.frame + 1 : self.trail_step,
                 self.trail_focus_body_idx,
             ]
@@ -735,10 +737,10 @@ class Visualization:
         self.cache.relative_trail = np.roll(new_cache, -1, axis=0)
 
         # Always update the very latest position
-        current_pos = self.sim.mm.r[self.frame, :]
+        current_pos = self.sim.mm.r_vis[self.frame, :]
 
         if self.trail_focus_body_idx is not None:
-            focus_pos = self.sim.mm.r[self.frame, self.trail_focus_body_idx]
+            focus_pos = self.sim.mm.r_vis[self.frame, self.trail_focus_body_idx]
             current_pos = current_pos - focus_pos
 
         self.cache.relative_trail[-1, :, :] = current_pos

@@ -101,14 +101,15 @@ def read_simstate(filename: Path) -> Tuple[np.memmap, Tuple[int, int, int]]:
 
     with open(filename, "rb") as f:
         steps, bodies, state_dim = validate_simstate_file(filename=filename, file=f)
-        # Memmap of remaining data
-        mm = np.memmap(
-            filename=filename,
-            dtype="float64",
-            mode="r",
-            offset=HEADER_SIZE,
-            shape=(steps, bodies, state_dim),
-        )
+
+    # Memmap of remaining data
+    mm = np.memmap(
+        filename=filename,
+        dtype="float64",
+        mode="r",
+        offset=HEADER_SIZE,
+        shape=(steps, bodies, state_dim),
+    )
 
     return mm, (steps, bodies, state_dim)
 
@@ -178,6 +179,9 @@ class Memmap:
         self._r_view = _RVView(self, "r")
         self._v_view = _RVView(self, "v")
 
+        self._r_vis_view = _RVVisView(self._r_view)
+        self._v_vis_view = _RVVisView(self._v_view)
+
     @property
     def r(self) -> "_RVView":
         return self._r_view
@@ -186,8 +190,15 @@ class Memmap:
     def v(self) -> "_RVView":
         return self._v_view
 
-    def __getitem__(self, key: Index | Tuple[Index, ...]) -> FloatArray:
-        return self.mm[key]
+    @property
+    def r_vis(self) -> "_RVVisView":
+        """Visualization view: (steps, 3, bodies)"""
+        return self._r_vis_view
+
+    @property
+    def v_vis(self) -> "_RVVisView":
+        """Visualization view: (steps, 3, bodies)"""
+        return self._v_vis_view
 
 
 class _RVView:
@@ -196,31 +207,32 @@ class _RVView:
         self._rv = rv
 
     def __getitem__(self, key: Index | Tuple[Index, ...]) -> FloatArray:
-        """
-        NumPy-like indexing:
-            mm.r[step, body]
-            mm.r[step_slice, body_slice]
-            mm.r[..., :]
-        """
         data = self._parent.mm
-        # Determine slice for last dimension
-        if self._rv == "r":
-            last_dim = slice(0, 3)
-        elif self._rv == "v":
-            last_dim = slice(3, 6)
-        else:
-            raise ValueError("rv must be 'r' or 'v'")
 
-        # If user provided full indexing, append last dimension
-        if isinstance(key, tuple):
-            # Append last dim slice if key has 2 dims or fewer
-            if len(key) == 1:
-                key = key + (last_dim,)
-            elif len(key) == 2:
-                key = key + (last_dim,)
-            # else, assume user already indexed last dim
-        else:
-            # Single int or slice → apply to first dim
-            key = (key, slice(None), last_dim)
+        last_dim = slice(0, 3) if self._rv == "r" else slice(3, 6)
 
-        return data[key]
+        # Normalize key into (step, body)
+        if not isinstance(key, tuple):
+            step, body = key, slice(None)
+        elif len(key) == 1:
+            step, body = key[0], slice(None)
+        else:
+            step, body = key[:2]
+
+        # Promote ints to slices to preserve dimensions
+        if isinstance(step, int):
+            step = slice(step, step + 1)
+        if isinstance(body, int):
+            body = slice(body, body + 1)
+
+        return data[step, body, last_dim]
+
+
+class _RVVisView:
+    def __init__(self, base_view: _RVView) -> None:
+        self._base = base_view
+
+    def __getitem__(self, key: Index | Tuple[Index, ...]) -> FloatArray:
+        # base returns (steps, bodies, 3)
+        data = self._base[key]
+        return np.transpose(data, (0, 2, 1))  # (steps, 3, bodies)
