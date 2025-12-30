@@ -1,95 +1,181 @@
 # Astrodynamics
 
-A small Python package for simple orbital simulation, ephemeris retrieval, and visualization utilities.
+A small but structured Python package for **orbital dynamics simulation**, **ephemeris handling**, and **trajectory visualization**, intended for scientific, educational, and prototyping use.
 
-This repository contains tools to load body ephemerides (from local JSON or NASA Horizons), represent bodies and initial conditions, run time-domain simulations, and visualize trajectories. It also includes profiling outputs and helpers used during development.
+The project supports simple N-body propagation, Horizons-based ephemeris ingestion, optional C++ acceleration, and matplotlib-based visualization. It is fully type-annotated and uses a modern `src/` layout.
+
+---
 
 ## Highlights
 
-- Python package name: `project` (packaged via `setup.py`).
-- Intended for scientific/educational use: simple N-body integrations, ephemeris fetching, and plotting.
-- Uses common scientific Python stack: `numpy`, `scipy`, `matplotlib`, `numba` (optional speed-ups), and `pydantic` for data validation.
+- **Package name:** `project`
+- **Layout:** `src/`-based, PEP 621 compliant
+- **Typing:** fully typed (`py.typed` included)
+- **Domains:** astrodynamics, N-body simulation, ephemerides
+- **Acceleration:** optional C++ force kernel via `pybind11`
+- **Audience:** education, experimentation, early-stage research
+
+---
 
 ## Repository layout
 
-Top-level files:
+### Top level
 
-- `Pipfile`, `pyproject.toml`, `setup.py` — project metadata and dependency hints.
-- `README.md` — this file.
-- `data/` — sample ephemeris JSON files used by simulations:
-  - `inner_solar_system_2460959.json`
-  - `solar_system_moons_2460966.json`
-  - `sun_earth_moon_2460966.json`
-  - `test.json`
-- `profiling/` — profiling outputs and a small `profile_stats.py` to summarize runs.
-- `project/` — main package code:
-  - `__main__.py` — example runner that sets up a `Simulation` and `Visualization`.
-  - `data.py` — data models for bodies and body lists (uses `pydantic` and `numpy`).
-  - `ephemeris.py` — helpers to fetch and parse data (contains a NASA Horizons wrapper and constants).
-  - `simulation.py` — simulation logic (N-body integrator).
-  - `integrals.py`, `exercise.py`, `utilities.py`, `visualization.py` — supporting modules.
+```text
+.
+├─ pyproject.toml          # Project metadata, dependencies, tooling config
+├─ README.md               # This file
+├─ LICENSE
+├─ build.bat               # Helper script for native build (Windows)
+├─ data/                   # Sample ephemeris and system definition files
+├─ profiling/              # Profiling utilities and results
+├─ src/                    # Source tree (Python + C++)
+├─ test/                   # Unit tests
+└─ cache/                  # Local scratch / experiment outputs
+```
+
+### Python package (`src/project/`)
+
+```txt
+src/project/
+├─ __init__.py
+├─ __main__.py             # Example entry point (python -m project)
+├─ _version.py
+├─ py.typed                # Marks package as typed
+│
+├─ simulation/             # Core simulation logic
+│  ├─ integrals.py         # Analytical integrals / helpers
+│  ├─ integrator.py        # Time integration schemes
+│  ├─ model.py             # Physical and numerical models
+│  ├─ propagator.py        # High-level propagation orchestration
+│  └─ cpp_force_kernel/    # Python bindings to optional C++ backend
+│
+├─ utils/                  # Supporting utilities
+│  ├─ data.py              # Data containers and helpers
+│  ├─ simstate.py          # Simulation state representations
+│  ├─ siminteg.py          # Integration helpers
+│  ├─ time.py              # Time handling utilities
+│  └─ horizons/            # NASA Horizons interface
+│     ├─ const.py
+│     └─ ephemeris.py
+│
+├─ ui/                     # Visualization & UI helpers
+│  ├─ constants.py
+│  └─ elements.py
+│
+└─ temp/                   # Experiments, demos, and generated media
+   ├─ 3bp.py
+   ├─ exercise.py
+   ├─ fictional_ephemeris.py
+   ├─ horizon.py
+   └─ *.gif
+```
+
+### Native extension (`src/cpp/`)
+
+```txt
+src/cpp/
+├─ CMakeLists.txt
+├─ main.cpp                # Force kernel implementation
+└─ include/                # vendored headers (pybind11, xtensor, etc.)
+```
+The C++ component provides an optional performance boost for force evaluation and is **not required** for basic usage.
+
+### Data files (`data/`)
+
+Sample TOML system definitions used for simulations:
+
+`sun_earth_moon_2460966.toml`
+`inner_solar_system_2460959.toml`
+`solar_system_2460967.toml`
+`solar_system_moons_2460966.toml`
+`figure-8.toml`
+`fictional_system_2460959.toml`
+
+A small conversion helper (`json2toml.py`) is included for legacy formats.
+
+### Profiling (`profiling/`)
+
+`profile_propagator.py` — profiling harness
+
+`profile_stats.py` — summary and analysis
+
+`profiling/README.md` — usage notes
+
+The package is instrumented to support performance analysis during development.
+
+### Tests (`test/`)
+
+`test_simulation.py`
+
+`test_pointmass_derivative_consistency.py`
+
+Tests focus on physical consistency and numerical correctness.
 
 ## Installation
 
-The project targets Python 3.13 per `Pipfile`.
+The project targets Python 3.13.
 
 ```powershell
-# Using pipenv
-pip install pipenv
-pipenv install --dev
+py -m venv .venv
+.venv\Scripts\activate
+pip install -e .[dev,test]
 ```
 
-## Quick usage
 
-Run the example simulation in `project.__main__`:
+Editable installs are recommended during development.
+
+## Quick start
+
+Run the example entry point:
 
 ```powershell
-python -m project
+py -m project
 ```
 
-This will create a `Simulation` with one of the sample datasets and start the `Visualization`.
 
-### Using modules directly
+This sets up a simple simulation using one of the bundled datasets and runs a propagation / visualization pipeline.
 
-Load a body list from file and inspect initial states:
+## Example usage
+### Load a system definition
 
 ```python
 from pathlib import Path
-from project.data import BodyList
+from project.utils.data import BodyList
 
-bl = BodyList.load(Path('data/sun_earth_moon_2460966.json'))
+bl = BodyList.load(Path("data/sun_earth_moon_2460966.toml"))
 print([b.name for b in bl])
-print('Initial positions shape:', bl.r_0.shape)
+print(bl.r_0.shape)
 ```
 
-Fetch ephemeris from NASA Horizons (see `project.ephemeris.horizons_request`) — this function performs an HTTP request and returns the raw response. Use with care (respect rate limits and include an email address when appropriate):
+### Fetch ephemerides from NASA Horizons
 
 ```python
-from project.ephemeris import horizons_request, safe_json_parse
+from project.utils.horizons.ephemeris import horizons_request, safe_json_parse
 
-resp = horizons_request(command='399', start_time='2025-01-01', stop_time='2025-01-02', step_size='1d')
+resp = horizons_request(
+    command="399",
+    start_time="2025-01-01",
+    stop_time="2025-01-02",
+    step_size="1d",
+)
+
 parsed = safe_json_parse(resp.text)
 ```
 
-## Key modules and responsibilities
 
-- `project/data.py` — pydantic models for `Body` and `BodyList`. Validates vectors and provides convenience properties for stacked initial condition arrays.
-- `project/ephemeris.py` — constants for body IDs and mu values, helper functions to request and parse Horizons output, and pre-defined target sets.
-- `project/simulation.py` — contains `Simulation` class which orchestrates integration (time stepping, gravitational interactions). See the docstrings in the file for detailed parameters.
-- `project/visualization.py` — plotting and visualization utilities; the example runner uses this to display trajectories.
-- `profiling/` — contains profiling outputs and `profile_stats.py` to analyze runtime profiles.
+⚠️ Use responsibly: respect Horizons rate limits and include identifying information when appropriate.
 
-## Data format
+## Design notes
 
-Sample JSON files in `data/` store a `body_list` key with an array of bodies. Each body includes:
+- **Numerical focus**: clarity and correctness over extreme performance
 
-- `name` — string
-- `mu` — gravitational parameter (m^3/s^2)
-- `r_0` — initial position vector [x, y, z] in meters
-- `v_0` — initial velocity vector [vx, vy, vz] in meters/second
+- **Strong typing**: all public modules are type-annotated
 
-Use `BodyList.load(pathlib.Path('data/your_file.json'))` to load these files.
+- **Modularity**: simulation, utilities, and UI are cleanly separated
 
-## Testing and profiling
+- **Extensibility**: C++ backend can be swapped or extended independently
 
-Unit tests are not included in the repository root. The project contains profiling outputs in `profiling/` which record runtime behavior over different runs. Use `profiling/profile_stats.py` to summarize profiling files (see file header for usage).
+## License
+
+See LICENSE for details.
