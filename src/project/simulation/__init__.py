@@ -3,13 +3,16 @@ from pathlib import Path
 
 import numpy as np
 
+from project.simulation.model import NumpyPointMass
+from project.simulation.propagator import Propagator
 from project.utils import (
-    A,
     Dir,
+    FloatArray,
     append_positions_npy,
     print_done,
     print_progress,
 )
+from project.utils.cache import SIMSTATE_FILE, Memmap
 from project.utils.data import BodyList
 
 
@@ -21,7 +24,7 @@ class Simulation:
         self.steps = int(time / dt)
 
         file_in = Dir.data / (self.name + ".toml")
-        file_traj = Dir.simulation / f"{self.name}_{dt}_{self.steps}.bin"
+        file_traj = Dir.simulation / SIMSTATE_FILE.format(self.name, dt, self.steps)
 
         # Run simulation first and save trajectory with progress tracker
         self.body_list = BodyList.load(file_in)
@@ -33,18 +36,27 @@ class Simulation:
 
         if not os.path.exists(file_traj):
             print(f"Simulating {time:.2e} seconds...")
-            simulate_n_steps(self.body_list, self.steps, dt, file_traj, prnt=True)
+            # simulate_n_steps(self.body_list, self.steps, dt, file_traj, prnt=True)
+            p = Propagator("rk4", NumpyPointMass())
+            p.propagate(
+                time_step=dt,
+                stop_time=int(self.steps * dt),
+                body_list=self.body_list,
+                filename=file_traj,
+            )
             print("\nSimulation complete.")
 
-        self.mm = np.memmap(
-            file_traj,
-            dtype="float64",
-            mode="r",
-            shape=(self.steps, 9, self.num_bodies),
-        )
+        # self.mm = np.memmap(
+        #     file_traj,
+        #     dtype="float64",
+        #     mode="r",
+        #     shape=(self.steps, 6 * self.num_bodies),
+        # )
+
+        self.mm = Memmap(file_traj)
 
 
-def a(body_list: BodyList, r: A) -> A:
+def a(body_list: BodyList, r: FloatArray) -> FloatArray:
     """
     Compute accelerations for all bodies at given positions r.
     r is shaped (3, N), with each column representing a body's position.
@@ -85,24 +97,21 @@ def a(body_list: BodyList, r: A) -> A:
     # Sum over j dimension to get total acceleration for each i
     a_mat = np.sum(accel_contributions, axis=2)  # Shape: (3, N)
 
-    return a_mat
+    return a_mat.reshape(3 * body_list.n)
 
 
 def rk4_step(
-    body_list: BodyList,
-    h: float,
-    k_arrays: list,
-    buffer: A,
-    step: int,
+    body_list: BodyList, h: float, k_arrays: list, buffer: FloatArray, step: int
 ) -> None:
     k_r1, k_r2, k_r3, k_r4, k_v1, k_v2, k_v3, k_v4 = k_arrays
+    n = body_list.n
 
     k_r1[:] = body_list.v_0
     k_v1[:] = a(body_list, body_list.r_0)
 
-    buffer[step, 0:3, :] = body_list.r_0
-    buffer[step, 3:6, :] = k_r1
-    buffer[step, 6:9, :] = k_v1
+    buffer[step, 0:3, :] = body_list.r_0.reshape(3, n)
+    buffer[step, 3:6, :] = k_r1.reshape(3, n)
+    buffer[step, 6:9, :] = k_v1.reshape(3, n)
 
     k_r2[:] = body_list.v_0 + k_v1 * h / 2
     k_v2[:] = a(body_list, body_list.r_0 + k_r1 * h / 2)
@@ -123,7 +132,7 @@ def simulate_n_steps(
     dt: float,
     filename: Path | None = None,
     prnt: bool = False,
-    buffer: A | None = None,
+    buffer: FloatArray | None = None,
 ) -> None:
     import time
 

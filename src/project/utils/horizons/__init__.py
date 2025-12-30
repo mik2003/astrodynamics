@@ -9,7 +9,7 @@ from typing import Dict
 import numpy as np
 import requests
 
-from project.utils import A, Dir, T
+from project.utils import Dir, FloatArray, T
 from project.utils.horizons.const import Body, HorizonsParams, bodies
 from project.utils.time import TimeConvert
 
@@ -57,7 +57,7 @@ class Horizons:
         return out
 
     @staticmethod
-    def retrieve_pos(body_name: Body, time_jd: float) -> A:
+    def retrieve_pos(body_name: Body, time_jd: float) -> FloatArray:
         """Retrieve body position in Geocentric inertial frame
 
         Parameters

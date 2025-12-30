@@ -8,11 +8,11 @@ from typing import List, ParamSpec
 import numpy as np
 
 # Types
-A = np.typing.NDArray[np.floating]  # Array type (floating)
-A_int = np.typing.NDArray[np.integer]  # Array type (integer)
+FloatArray = np.typing.NDArray[np.floating]  # Array type (floating)
+IntArray = np.typing.NDArray[np.integer]  # Array type (integer)
 # Union types for overloaded functions
-floatA = float | A
-intA = int | A_int
+FloatScalarOrArray = float | FloatArray
+IntScalarOrArray = int | IntArray
 
 P = ParamSpec("P")
 
@@ -59,6 +59,7 @@ class Dir:
     cache = root / "cache"
     simulation = cache / "simulation"
     horizons = cache / "horizons"
+    test = cache / "test"
 
 
 class ProgressTracker:
@@ -134,7 +135,7 @@ def append_positions_npy(filename: Path, positions_buffer: np.ndarray) -> None:
 
 def load_trails_npy(
     filename: str, last_n_steps: int, step_interval: int, num_bodies: int
-) -> List[A]:
+) -> List[FloatArray]:
     """
     Load the last_n_steps (3, num_bodies) arrays from a binary file.
     Returns a list of np.ndarray of shape (3, num_bodies) for each step.

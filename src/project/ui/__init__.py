@@ -9,7 +9,7 @@ import pygame
 from project.simulation import Simulation
 from project.ui.constants import VisC
 from project.ui.elements import InfoDisplay
-from project.utils import A, T, ValueUnitToStr
+from project.utils import FloatArray, T, ValueUnitToStr
 
 
 @dataclass
@@ -29,8 +29,8 @@ class VisualizationState:
 
 
 class VisualizationCache:
-    trail: A
-    relative_trail: A
+    trail: FloatArray
+    relative_trail: FloatArray
     trail_frame: int = 0  # frames from last trail point
     rebuild_trail = True
     rebuild_relative_trail = True
@@ -578,7 +578,7 @@ class Visualization:
         )
         self.screen.blit(sim_speed_text, (10, 50))
 
-    def scale_pos_array(self, pos: A) -> A:
+    def scale_pos_array(self, pos: FloatArray) -> FloatArray:
         # Apply Z rotation (in-plane)
         cos_z = np.cos(self.state.rotation_z)
         sin_z = np.sin(self.state.rotation_z)
@@ -635,15 +635,13 @@ class Visualization:
             end_frame = min(self.sim.steps, end_frame)
 
             if start_frame < end_frame:
-                positions_to_add = self.sim.mm[start_frame:end_frame:step, 0:3, :]
+                positions_to_add = self.sim.mm.r[start_frame:end_frame:step, :]
 
                 # Apply focus offset if needed
                 if self.trail_focus_body_idx is not None:
-                    focus_positions = self.sim.mm[
-                        start_frame:end_frame:step,
-                        0:3,
-                        self.trail_focus_body_idx,
-                    ][:, :, np.newaxis]
+                    focus_positions = self.sim.mm.r[
+                        start_frame:end_frame:step, self.trail_focus_body_idx
+                    ]
                     positions_to_add = positions_to_add - focus_positions
 
                 # Roll the cache and add new positions
@@ -655,12 +653,10 @@ class Visualization:
                 )
 
         # Always update the very latest position
-        current_pos = self.sim.mm[self.frame, 0:3, :][np.newaxis, :, :]
+        current_pos = self.sim.mm.r[self.frame, :]
 
         if self.trail_focus_body_idx is not None:
-            focus_pos = self.sim.mm[self.frame, 0:3, self.trail_focus_body_idx][
-                np.newaxis, :, np.newaxis
-            ]
+            focus_pos = self.sim.mm.r[self.frame, self.trail_focus_body_idx]
             current_pos = current_pos - focus_pos
 
         self.cache.relative_trail[-1, :, :] = current_pos
@@ -719,16 +715,13 @@ class Visualization:
     def rebuild_relative_trail_cache(self) -> None:
         new_cache = np.empty((self.trail_length, 3, self.sim.num_bodies))
         initial_point = max(0, self.frame - self.trail_length * self.trail_step + 1)
-        current_pos = self.sim.mm[
-            initial_point : self.frame + 1 : self.trail_step, 0:3, :
-        ]
+        current_pos = self.sim.mm.r[initial_point : self.frame + 1 : self.trail_step, :]
 
         if self.trail_focus_body_idx is not None:
-            pos_diff = self.sim.mm[
+            pos_diff = self.sim.mm.r[
                 initial_point : self.frame + 1 : self.trail_step,
-                0:3,
                 self.trail_focus_body_idx,
-            ][:, :, np.newaxis]
+            ]
             current_pos = current_pos - pos_diff
 
         n = current_pos.shape[0]
@@ -742,12 +735,10 @@ class Visualization:
         self.cache.relative_trail = np.roll(new_cache, -1, axis=0)
 
         # Always update the very latest position
-        current_pos = self.sim.mm[self.frame, 0:3, :][np.newaxis, :, :]
+        current_pos = self.sim.mm.r[self.frame, :]
 
         if self.trail_focus_body_idx is not None:
-            focus_pos = self.sim.mm[self.frame, 0:3, self.trail_focus_body_idx][
-                np.newaxis, :, np.newaxis
-            ]
+            focus_pos = self.sim.mm.r[self.frame, self.trail_focus_body_idx]
             current_pos = current_pos - focus_pos
 
         self.cache.relative_trail[-1, :, :] = current_pos
@@ -769,7 +760,7 @@ class Visualization:
         self.cache.trail = new_cache
         self.cache.rebuild_trail = False
 
-    def is_on_screen(self) -> A:
+    def is_on_screen(self) -> FloatArray:
         x_coords = self.cache.trail[:, 0, :]
         y_coords = self.cache.trail[:, 1, :]
 

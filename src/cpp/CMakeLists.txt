@@ -21,6 +21,20 @@ message(STATUS "Using NumPy include: ${NUMPY_INCLUDE}")
 # --- Create module ---
 add_library(_cpp_force_kernel MODULE main.cpp)
 
+# --- Performance flags ---
+if(MSVC)
+    target_compile_options(_cpp_force_kernel PRIVATE
+        /O2
+        /fp:fast
+    )
+else()
+    target_compile_options(_cpp_force_kernel PRIVATE
+        -O3
+        -ffast-math
+        -march=native
+    )
+endif()
+
 # --- Include directories ---
 target_include_directories(_cpp_force_kernel PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include/xtensor/include

@@ -13,7 +13,7 @@ from pydantic import (
 )
 from pydantic_core import core_schema
 
-from project.utils import A, camel_to_snake
+from project.utils import FloatArray, camel_to_snake
 
 T = TypeVar("T", bound="Body")
 
@@ -89,10 +89,10 @@ class BodyList(list[Body]):
         super().__init__(value)
         self.metadata: Dict[str, str] | None = None
 
-        self._r_0: A | None = None
-        self._v_0: A | None = None
+        self._r_0: FloatArray | None = None
+        self._v_0: FloatArray | None = None
 
-        self._mu: A | None = None
+        self._mu: FloatArray | None = None
         self._n: int | None = None
 
     @staticmethod
@@ -139,31 +139,31 @@ class BodyList(list[Body]):
             tomli_w.dump(data, f)
 
     @property
-    def r_0(self) -> A:
+    def r_0(self) -> FloatArray:
         if self._r_0 is None:
             self._r_0 = np.hstack([body.r_0 for body in self if body.r_0 is not None])
         return self._r_0
 
     @r_0.setter
-    def r_0(self, value: A) -> None:
+    def r_0(self, value: FloatArray) -> None:
         self._r_0 = value
 
     @property
-    def v_0(self) -> A:
+    def v_0(self) -> FloatArray:
         if self._v_0 is None:
             self._v_0 = np.hstack([body.v_0 for body in self if body.v_0 is not None])
         return self._v_0
 
     @v_0.setter
-    def v_0(self, value: A) -> None:
+    def v_0(self, value: FloatArray) -> None:
         self._v_0 = value
 
     @property
-    def y_0(self) -> A:
-        return np.concatenate([self.r_0, self.v_0])
+    def y_0(self) -> FloatArray:
+        return np.hstack([self.r_0, self.v_0])
 
     @property
-    def mu(self) -> A:
+    def mu(self) -> FloatArray:
         if self._mu is None:
             self._mu = np.array([body.mu for body in self])
         return self._mu

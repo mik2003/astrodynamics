@@ -4,79 +4,88 @@ import numba as nb
 import numpy as np
 
 from project.simulation.cpp_force_kernel import point_mass_cpp
-from project.utils import A
+from project.utils import FloatArray
 
 
 class ForceKernel:
-    def __call__(self, state: A, *args: Any, **kwargs: Any) -> A:
+    def __call__(self, state: FloatArray, *args: Any, **kwargs: Any) -> FloatArray:
         raise NotImplementedError
 
 
 class NumpyPointMass(ForceKernel):
-    def __call__(self, state: A, n: int, mu: A, out: A) -> A:
+    def __call__(
+        self, state: FloatArray, n: int, mu: FloatArray, out: FloatArray
+    ) -> FloatArray:
         point_mass_numpy(state, n, mu, out)
         return out
 
 
 class NumbaPointMass(ForceKernel):
-    def __call__(self, state: A, n: int, mu: A, out: A) -> A:
+    def __call__(
+        self, state: FloatArray, n: int, mu: FloatArray, out: FloatArray
+    ) -> FloatArray:
         point_mass_numba(state, n, mu, out)
         return out
 
 
 class CPPPointMass(ForceKernel):
-    def __call__(self, state: A, n: int, mu: A, out: A) -> A:
-        return point_mass_cpp(state, mu)
+    def __call__(
+        self, state: FloatArray, n: int, mu: FloatArray, out: FloatArray
+    ) -> FloatArray:
+        point_mass_cpp(state, mu, out)
+        return out
 
 
-def point_mass_numpy(state: A, n: int, mu: A, out: A) -> None:
-    """Point mass gravity (J0)
+def point_mass_numpy(
+    state: FloatArray, n: int, mu: FloatArray, out: FloatArray
+) -> None:
+    """
+    Fast vectorized NumPy point-mass gravity kernel.
 
     Parameters
     ----------
-    state : A
-        Position and velocity (6N,)
-
-    Returns
-    -------
-    A
-        Velocity and acceleration (6N,)
-
-    Raises
-    ------
-    ValueError
-        If state is not of correct shape
+    state : (6*n,) array
+        Positions and velocities: [x0,y0,z0,x1,...,vx0,vy0,vz0,...]
+    n : int
+        Number of bodies
+    mu : (n,) array
+        Masses of bodies
+    out : (6*n,) array
+        Output buffer for [v, a] (same layout as state)
     """
-    # Uncomment for debugging
-    # if state.shape[0] % 6 != 0:
-    #     raise ValueError("State must be of shape (6,)")
-
-    # Initialize output state (if no buffer)
-    # out = np.zeros_like(state)
-
     # r' = v
     out[: 3 * n] = state[3 * n :]
 
-    # Extract positions and calculate distances
+    # Positions reshaped
     r = state[: 3 * n].reshape(3, n)
-    r_ij = r[:, :, np.newaxis] - r[:, np.newaxis, :]
 
-    # Avoid divisions by zero
+    # Pairwise differences (r_i - r_j)
+    r_ij = r[:, :, np.newaxis] - r[:, np.newaxis, :]  # Shape: (3, n, n)
+
+    # Avoid self-interaction
+    np.fill_diagonal(r_ij[0], 0.0)
+    np.fill_diagonal(r_ij[1], 0.0)
+    np.fill_diagonal(r_ij[2], 0.0)
+
+    # Distances cubed
     dist_sq = np.sum(r_ij**2, axis=0)
     np.fill_diagonal(dist_sq, np.inf)
+    inv_r3 = 1.0 / (dist_sq * np.sqrt(dist_sq))  # Shape: (n, n)
 
-    # Calculate all accelerations
-    dist_cubed = dist_sq * np.sqrt(dist_sq)
-    accel_contributions = (
-        r_ij * mu[np.newaxis, np.newaxis, :] / dist_cubed[np.newaxis, :, :]
-    )
+    # Mass matrix
+    mu_j = mu[np.newaxis, :]  # Shape: (1, n)
 
-    # v' = a
-    out[3 * n :] = np.sum(accel_contributions, axis=2).reshape((3 * n))
+    # Acceleration contributions
+    contrib = r_ij * (mu_j * inv_r3)  # Shape: (3, n, n)
+
+    # Symmetric sum: subtract for i, add for j
+    out[3 * n :] = np.sum(contrib - contrib.transpose(0, 2, 1), axis=2).reshape(3 * n)
 
 
 @nb.njit(fastmath=True, cache=True)
-def point_mass_numba(state: A, n: int, mu: A, out: A) -> None:
+def point_mass_numba(
+    state: FloatArray, n: int, mu: FloatArray, out: FloatArray
+) -> None:
     # r' = v
     for k in range(3 * n):
         out[k] = state[k + 3 * n]

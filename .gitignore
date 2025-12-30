@@ -175,6 +175,7 @@ cython_debug/
 
 # Binary files
 *.bin
+*.simstate
 
 # Profiling logs
 profiling/profile_*.txt

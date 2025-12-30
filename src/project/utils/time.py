@@ -5,7 +5,7 @@ from typing import Tuple, overload
 
 import numpy as np
 
-from project.utils import A, A_int, floatA, intA
+from project.utils import FloatArray, FloatScalarOrArray, IntArray, IntScalarOrArray
 
 
 @dataclass(frozen=True)
@@ -31,9 +31,9 @@ class TimeConvert:
     def d2jd(d: float, epoch: float) -> float: ...
     @overload
     @staticmethod
-    def d2jd(d: A, epoch: float) -> A: ...
+    def d2jd(d: FloatArray, epoch: float) -> FloatArray: ...
     @staticmethod
-    def d2jd(d: floatA, epoch: float) -> floatA:
+    def d2jd(d: FloatScalarOrArray, epoch: float) -> FloatScalarOrArray:
         """Days to julian date (JD)
 
         Parameters
@@ -55,9 +55,9 @@ class TimeConvert:
     def s2jd(s: float, epoch: float) -> float: ...
     @overload
     @staticmethod
-    def s2jd(s: A, epoch: float) -> A: ...
+    def s2jd(s: FloatArray, epoch: float) -> FloatArray: ...
     @staticmethod
-    def s2jd(s: floatA, epoch: float) -> floatA:
+    def s2jd(s: FloatScalarOrArray, epoch: float) -> FloatScalarOrArray:
         """Seconds to julian date (JD)
 
         Parameters
@@ -79,9 +79,9 @@ class TimeConvert:
     def jd2mjd(jd: float) -> float: ...
     @overload
     @staticmethod
-    def jd2mjd(jd: A) -> A: ...
+    def jd2mjd(jd: FloatArray) -> FloatArray: ...
     @staticmethod
-    def jd2mjd(jd: floatA) -> floatA:
+    def jd2mjd(jd: FloatScalarOrArray) -> FloatScalarOrArray:
         """Julian date (JD) to modified julian date (MJD)
 
         Parameters
@@ -101,9 +101,9 @@ class TimeConvert:
     def d2mjd(d: float, epoch: float) -> float: ...
     @overload
     @staticmethod
-    def d2mjd(d: A, epoch: float) -> A: ...
+    def d2mjd(d: FloatArray, epoch: float) -> FloatArray: ...
     @staticmethod
-    def d2mjd(d: floatA, epoch: float) -> float | A:
+    def d2mjd(d: FloatScalarOrArray, epoch: float) -> float | FloatArray:
         """Days to modified julian date (MJD)
 
         Parameters
@@ -125,9 +125,9 @@ class TimeConvert:
     def s2mjd(s: float, epoch: float) -> float: ...
     @overload
     @staticmethod
-    def s2mjd(s: A, epoch: float) -> A: ...
+    def s2mjd(s: FloatArray, epoch: float) -> FloatArray: ...
     @staticmethod
-    def s2mjd(s: floatA, epoch: float) -> floatA:
+    def s2mjd(s: FloatScalarOrArray, epoch: float) -> FloatScalarOrArray:
         """Days to modified julian date (MJD)
 
         Parameters
@@ -150,10 +150,19 @@ class TimeConvert:
     @overload
     @staticmethod
     def jd2cal(
-        jd: A,
-    ) -> Tuple[A_int, A_int, A_int, A_int, A_int, A_int]: ...
+        jd: FloatArray,
+    ) -> Tuple[IntArray, IntArray, IntArray, IntArray, IntArray, IntArray]: ...
     @staticmethod
-    def jd2cal(jd: floatA) -> Tuple[intA, intA, intA, intA, intA, intA]:
+    def jd2cal(
+        jd: FloatScalarOrArray,
+    ) -> Tuple[
+        IntScalarOrArray,
+        IntScalarOrArray,
+        IntScalarOrArray,
+        IntScalarOrArray,
+        IntScalarOrArray,
+        IntScalarOrArray,
+    ]:
         """Method to convert julian date (JD) to calendar date/time
         Only works for dates after the implementation of the
         gregorian calendar in 1582 (1583 on is safe)
@@ -202,9 +211,20 @@ class TimeConvert:
     def cal2jd(cal: Tuple[int, int, int, int, int, int]) -> float: ...
     @overload
     @staticmethod
-    def cal2jd(cal: Tuple[A_int, A_int, A_int, A_int, A_int, A_int]) -> A: ...
+    def cal2jd(
+        cal: Tuple[IntArray, IntArray, IntArray, IntArray, IntArray, IntArray],
+    ) -> FloatArray: ...
     @staticmethod
-    def cal2jd(cal: Tuple[intA, intA, intA, intA, intA, intA]) -> floatA:
+    def cal2jd(
+        cal: Tuple[
+            IntScalarOrArray,
+            IntScalarOrArray,
+            IntScalarOrArray,
+            IntScalarOrArray,
+            IntScalarOrArray,
+            IntScalarOrArray,
+        ],
+    ) -> FloatScalarOrArray:
         """Method to convert calendar date/time to julian date (JD)
         Only works for dates after the implementation of the
         gregorian calendar in 1582 (1583 on is safe)
@@ -239,10 +259,19 @@ class TimeConvert:
     @overload
     @staticmethod
     def s2cal(
-        s: A, epoch: float
-    ) -> Tuple[A_int, A_int, A_int, A_int, A_int, A_int]: ...
+        s: FloatArray, epoch: float
+    ) -> Tuple[IntArray, IntArray, IntArray, IntArray, IntArray, IntArray]: ...
     @staticmethod
-    def s2cal(s: floatA, epoch: float) -> Tuple[intA, intA, intA, intA, intA, intA]:
+    def s2cal(
+        s: FloatScalarOrArray, epoch: float
+    ) -> Tuple[
+        IntScalarOrArray,
+        IntScalarOrArray,
+        IntScalarOrArray,
+        IntScalarOrArray,
+        IntScalarOrArray,
+        IntScalarOrArray,
+    ]:
         """Seconds to calendar date/time
 
         Parameters

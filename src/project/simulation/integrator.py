@@ -4,19 +4,19 @@ from typing import Callable, Concatenate
 
 import numpy as np
 
-from project.utils import A, P
+from project.utils import FloatArray, P
 
 
 class Integrator:
     @staticmethod
     def euler(
-        state: A,
+        state: FloatArray,
         time_step: float,
         stop_time: float,
-        func: Callable[Concatenate[A, P], A],
+        func: Callable[Concatenate[FloatArray, P], FloatArray],
         *args: P.args,
         **kwargs: P.kwargs,
-    ) -> A:
+    ) -> FloatArray:
         """Euler integrator
 
         Parameters
@@ -59,13 +59,13 @@ class Integrator:
 
     @staticmethod
     def rk4(
-        state: A,
+        state: FloatArray,
         time_step: float,
         stop_time: float,
-        func: Callable[Concatenate[A, P], A],
+        func: Callable[Concatenate[FloatArray, P], FloatArray],
         *args: P.args,
         **kwargs: P.kwargs,
-    ) -> A:
+    ) -> FloatArray:
         """Runge-Kutta 4 integrator
 
         Parameters

@@ -6,12 +6,14 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from project.simulation import Simulation
-from project.utils import A, Dir, print_done, print_progress
+from project.utils import Dir, FloatArray, print_done, print_progress
 
 G = 6.67430e-11
 
 
-def calculate_energy(mm: np.memmap, mu: A, cache_file: Path | None = None) -> A:
+def calculate_energy(
+    mm: np.memmap, mu: FloatArray, cache_file: Path | None = None
+) -> FloatArray:
     """
     Calculate total energy using vectorized operations with caching
     """
@@ -69,8 +71,8 @@ def calculate_energy(mm: np.memmap, mu: A, cache_file: Path | None = None) -> A:
 
 
 def calculate_angular_momentum(
-    mm: np.memmap, mu: A, cache_file: Path | None = None
-) -> A:
+    mm: np.memmap, mu: FloatArray, cache_file: Path | None = None
+) -> FloatArray:
     """
     Calculate angular momentum with caching
     """

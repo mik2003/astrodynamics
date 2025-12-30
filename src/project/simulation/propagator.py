@@ -5,7 +5,7 @@ import numpy as np
 
 from project.simulation.integrator import Integrator
 from project.simulation.model import ForceKernel
-from project.utils import append_positions_npy
+from project.utils.cache import write_simstate
 from project.utils.data import BodyList
 
 
@@ -34,4 +34,4 @@ class Propagator:
             out=buffer,
         )
         if filename is not None:
-            append_positions_npy(filename, y)
+            write_simstate(filename, np.asarray(y).reshape(-1, body_list.n, 6))
