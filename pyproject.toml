@@ -50,6 +50,10 @@ convention = "numpy" # Accepts: "google", "numpy", or "pep257".
 module = "numba"
 ignore_missing_imports = true
 
+[[tool.mypy.overrides]]
+module = "scipy"
+ignore_missing_imports = true
+
 [tool.mypy]
 warn_return_any = true
 warn_unused_configs = true

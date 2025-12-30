@@ -1,17 +1,18 @@
 import struct
 from io import BufferedReader, BufferedWriter
 from pathlib import Path
-from typing import Tuple
+from typing import Tuple, cast
 
 import numpy as np
+import scipy
 
 from project.utils import FloatArray
 
 SIMINTEG_EXTENSION = ".siminteg"
-SIMINTEG_FILE = "{}__{}__{}__{}" + SIMINTEG_EXTENSION
+SIMINTEG_FILE = "{}__{}__{}" + SIMINTEG_EXTENSION
 
 MAGIC = b"SIMINTEG"
-VERSION = 1
+VERSION = 2
 HEADER_FMT = (
     "<"  # little-endian
     "8s"  # magic
@@ -106,23 +107,23 @@ def read_siminteg(
     return mm, (steps, integ_dim, dt)
 
 
-def parse_siminteg_filename(filename: Path) -> Tuple[str, int, int, str]:
+def parse_siminteg_filename(filename: Path) -> Tuple[str, int, int]:
     if filename.suffix != SIMINTEG_EXTENSION:
         raise ValueError(f"{filename} is not a .siminteg binary file")
     elements = filename.stem.split("__")
-    if len(elements) != 4:
+    if len(elements) != 3:
         raise ValueError(
-            f"'{filename.name}' Filename format is wrong (name__dt__steps__integ.siminteg)"
+            f"'{filename.name}' Filename format is wrong (name__dt__steps.siminteg)"
         )
-    name, dt, steps, integ = elements
+    name, dt, steps = elements
 
-    return name, int(dt), int(steps), integ
+    return name, int(dt), int(steps)
 
 
 def validate_siminteg_file(
     filename: Path, file: BufferedReader
 ) -> Tuple[int, int, float]:
-    _, dt_f, steps_f, _ = parse_siminteg_filename(filename=filename)
+    _, dt_f, steps_f = parse_siminteg_filename(filename=filename)
     steps, integ_dim, dt = read_header(f=file)
     if dt_f != int(dt) or steps_f != steps - 1:
         raise ValueError("Filename does not match file header")
@@ -131,7 +132,7 @@ def validate_siminteg_file(
 
 
 def validate_siminteg_data(filename: Path, data: FloatArray) -> Tuple[int, int, int]:
-    _, dt_f, steps_f, _ = parse_siminteg_filename(filename=filename)
+    _, dt_f, steps_f = parse_siminteg_filename(filename=filename)
     steps, integ_dim = data.shape
     if steps_f != steps - 1:
         raise ValueError(
@@ -147,3 +148,15 @@ class SimintegMemmap:
         self.steps = steps
         self.integ_dim = integ_dim
         self.dt = dt
+
+    @property
+    def e(self) -> FloatArray:
+        return self.mm[:, 0]
+
+    @property
+    def h_vec(self) -> FloatArray:
+        return self.mm[:, 1:]
+
+    @property
+    def h(self) -> FloatArray:
+        return cast(FloatArray, scipy.linalg.norm(self.h_vec, axis=1))

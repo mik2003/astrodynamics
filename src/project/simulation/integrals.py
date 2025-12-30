@@ -1,11 +1,10 @@
-# integrals.py
 import time
 from pathlib import Path
 
 import numpy as np
 
 from project.utils import Float, FloatArray, print_done, print_progress
-from project.utils.siminteg import SIMINTEG_FILE, write_siminteg
+from project.utils.siminteg import SIMINTEG_FILE, SimintegMemmap, write_siminteg
 from project.utils.simstate import SimstateMemmap
 
 G = 6.67430e-11
@@ -123,27 +122,6 @@ def calculate_integrals(
     return integrals
 
 
-# ============================================================================
-# Convenience functions
-# ============================================================================
-
-
-def calculate_energy(
-    sim: SimstateMemmap, mu: FloatArray, cache_file: Path | None = None
-) -> FloatArray:
-    """Return total energy time series"""
-    integrals = calculate_integrals(sim, mu, cache_file)
-    return integrals[:, 0]
-
-
-def calculate_angular_momentum(
-    sim: SimstateMemmap, mu: FloatArray, cache_file: Path | None = None
-) -> FloatArray:
-    """Return angular momentum time series (steps x 3)"""
-    integrals = calculate_integrals(sim, mu, cache_file)
-    return integrals[:, 1:]
-
-
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
 
@@ -152,7 +130,7 @@ if __name__ == "__main__":
 
     # Load simulation
     sim = Simulation(
-        name="solar_system_moons_2460966",
+        name="inner_solar_system_2460959",
         dt=3600,
         time=3600 * 24 * 365.25 * 100,
     )
@@ -161,29 +139,30 @@ if __name__ == "__main__":
     mu_arr = np.array(mu_list)
 
     # Create cache filenames based on simulation parameters
-    base_name = (sim.name, sim.dt, sim.steps)
-    energy_cache = Dir.simulation / SIMINTEG_FILE.format(*base_name, "e")
-    angular_cache = Dir.simulation / SIMINTEG_FILE.format(*base_name, "h")
+    integ_cache = Dir.simulation / SIMINTEG_FILE.format(sim.name, sim.dt, sim.steps)
 
     # Calculate with caching
-    e_total = calculate_energy(sim.mm, mu_arr, energy_cache)
-    h = calculate_angular_momentum(sim.mm, mu_arr, angular_cache)
+    integ = calculate_integrals(sim.mm, mu_arr, integ_cache)
+    int_mm = SimintegMemmap(integ_cache)
 
     # Plot
-    h_0 = h[0, 2]
+    h_0 = int_mm.h[0]
     t_ = sim.mm.t / 3600 / 24  # convert to days
 
     plt.figure(figsize=(12, 8))
 
     plt.subplot(2, 1, 1)
-    plt.plot(t_, (h[:, 2] - h_0) / h_0 * 100, label="Specific angular momentum")
+    plt.plot(t_, (int_mm.h[:] - h_0) / h_0 * 100, label="Specific angular momentum")
     plt.ylabel("Change [%]")
     plt.title("Change in Angular Momentum")
     plt.legend()
 
     plt.subplot(2, 1, 2)
     plt.plot(
-        t_, (e_total - e_total[0]) / e_total[0] * 100, label="Total Energy", linewidth=2
+        t_,
+        (int_mm.e - int_mm.e[0]) / int_mm.e[0] * 100,
+        label="Total Energy",
+        linewidth=2,
     )
     plt.ylabel("Change [%]")
     plt.xlabel("Time [days]")
@@ -193,8 +172,8 @@ if __name__ == "__main__":
     plt.tight_layout()
     plt.show()
 
-    print(f"Initial total energy: {e_total[0]:.6e}")
-    print(f"Final total energy: {e_total[-1]:.6e}")
+    print(f"Initial total energy: {int_mm.e[0]:.6e}")
+    print(f"Final total energy: {int_mm.e[-1]:.6e}")
     print(
-        f"Energy conservation: {((e_total[-1] - e_total[0]) / e_total[0] * 100):.6f}%"
+        f"Energy conservation: {((int_mm.e[-1] - int_mm.e[0]) / int_mm.e[0] * 100):.6f}%"
     )
