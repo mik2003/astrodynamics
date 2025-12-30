@@ -8,78 +8,64 @@ from project.utils import FloatArray
 
 
 class ForceKernel:
-    def __call__(self, state: FloatArray, *args: Any, **kwargs: Any) -> FloatArray:
+    def __call__(
+        self, state: FloatArray, out: FloatArray, *args: Any, **kwargs: Any
+    ) -> None:
         raise NotImplementedError
 
 
 class NumpyPointMass(ForceKernel):
     def __call__(
-        self, state: FloatArray, n: int, mu: FloatArray, out: FloatArray
-    ) -> FloatArray:
+        self, state: FloatArray, out: FloatArray, n: int, mu: FloatArray
+    ) -> None:
         point_mass_numpy(state, n, mu, out)
-        return out
 
 
 class NumbaPointMass(ForceKernel):
     def __call__(
-        self, state: FloatArray, n: int, mu: FloatArray, out: FloatArray
-    ) -> FloatArray:
+        self, state: FloatArray, out: FloatArray, n: int, mu: FloatArray
+    ) -> None:
         point_mass_numba(state, n, mu, out)
-        return out
 
 
 class CPPPointMass(ForceKernel):
     def __call__(
-        self, state: FloatArray, n: int, mu: FloatArray, out: FloatArray
-    ) -> FloatArray:
+        self, state: FloatArray, out: FloatArray, n: int, mu: FloatArray
+    ) -> None:
         point_mass_cpp(state, mu, out)
-        return out
 
 
 def point_mass_numpy(
     state: FloatArray, n: int, mu: FloatArray, out: FloatArray
 ) -> None:
     """
-    Fast vectorized NumPy point-mass gravity kernel.
-
-    Parameters
-    ----------
-    state : (6*n,) array
-        Positions and velocities: [x0,y0,z0,x1,...,vx0,vy0,vz0,...]
-    n : int
-        Number of bodies
-    mu : (n,) array
-        Masses of bodies
-    out : (6*n,) array
-        Output buffer for [v, a] (same layout as state)
+    Vectorized NumPy point-mass gravity kernel (body-major layout).
     """
     # r' = v
     out[: 3 * n] = state[3 * n :]
 
-    # Positions reshaped
-    r = state[: 3 * n].reshape(3, n)
+    # Positions: (n, 3)
+    r = state[: 3 * n].reshape(n, 3)
 
-    # Pairwise differences (r_i - r_j)
-    r_ij = r[:, :, np.newaxis] - r[:, np.newaxis, :]  # Shape: (3, n, n)
+    # Pairwise displacements: r_j - r_i → (n, n, 3)
+    r_i = r[:, None, :]  # (n, 1, 3)
+    r_j = r[None, :, :]  # (1, n, 3)
+    r_ij = r_j - r_i  # (n, n, 3)
 
-    # Avoid self-interaction
-    np.fill_diagonal(r_ij[0], 0.0)
-    np.fill_diagonal(r_ij[1], 0.0)
-    np.fill_diagonal(r_ij[2], 0.0)
-
-    # Distances cubed
-    dist_sq = np.sum(r_ij**2, axis=0)
+    # Squared distances
+    dist_sq = np.sum(r_ij**2, axis=2)  # (n, n)
     np.fill_diagonal(dist_sq, np.inf)
-    inv_r3 = 1.0 / (dist_sq * np.sqrt(dist_sq))  # Shape: (n, n)
 
-    # Mass matrix
-    mu_j = mu[np.newaxis, :]  # Shape: (1, n)
+    inv_r3 = 1.0 / (dist_sq * np.sqrt(dist_sq))
 
-    # Acceleration contributions
-    contrib = r_ij * (mu_j * inv_r3)  # Shape: (3, n, n)
+    # Acceleration: sum over j
+    a = np.sum(
+        r_ij * (mu[None, :, None] * inv_r3[:, :, None]),
+        axis=1,
+    )  # (n, 3)
 
-    # Symmetric sum: subtract for i, add for j
-    out[3 * n :] = np.sum(contrib - contrib.transpose(0, 2, 1), axis=2).reshape(3 * n)
+    # Write back interleaved
+    out[3 * n :] = a.reshape(3 * n)
 
 
 @nb.njit(fastmath=True, cache=True)

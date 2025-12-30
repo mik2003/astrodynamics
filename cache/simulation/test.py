@@ -24,4 +24,6 @@ data_sim = Memmap(f_sim)
 print(data_bin[0, :3, :])
 print(data_sim.r_vis[0, :])
 
-# np.testing.assert_allclose(data_bin, data_sim)
+np.testing.assert_allclose(
+    data_bin[-1, :3, :][np.newaxis, :, :], data_sim.r_vis[8765, :]
+)

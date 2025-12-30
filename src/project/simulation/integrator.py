@@ -13,7 +13,7 @@ class Integrator:
         state: FloatArray,
         time_step: float,
         stop_time: float,
-        func: Callable[Concatenate[FloatArray, P], FloatArray],
+        func: Callable[Concatenate[FloatArray, FloatArray, P], None],
         *args: P.args,
         **kwargs: P.kwargs,
     ) -> FloatArray:
@@ -43,14 +43,20 @@ class Integrator:
             dtype=np.float64,
         )
         steps = time_array_seconds.size
+        dim = state.size
         # Initialize full state vector
-        y = np.zeros((steps, state.size))
+        y = np.zeros((steps, dim))
         # Change print_step for debugging
         # progress = ProgressTracker(n=steps, print_step=10000, name="Integrating Euler")
         # Perform Euler integration
         y[0, :] = state
+
+        # Euler buffer
+        tmp = np.empty(dim)
+
         for i in range(steps - 1):
-            y[i + 1, :] = y[i, :] + time_step * func(y[i, :], *args, **kwargs)
+            func(y[i, :], tmp, *args, **kwargs)
+            y[i + 1, :] = y[i, :] + time_step * tmp
             # Uncomment for debugging
             # progress.print(i=i)
         # progress.print(i=steps)
@@ -62,7 +68,7 @@ class Integrator:
         state: FloatArray,
         time_step: float,
         stop_time: float,
-        func: Callable[Concatenate[FloatArray, P], FloatArray],
+        func: Callable[Concatenate[FloatArray, FloatArray, P], None],
         *args: P.args,
         **kwargs: P.kwargs,
     ) -> FloatArray:
@@ -92,18 +98,26 @@ class Integrator:
             dtype=np.float64,
         )
         steps = time_array_seconds.size
+        dim = state.size
         # Initialize full state vector
-        y = np.zeros((steps, state.size))
+        y = np.zeros((steps, dim))
         # Change print_step for debugging
         # progress = ProgressTracker(n=steps, print_step=10000, name="Integrating RK4")
         # Perform RK4 integration
         y[0, :] = state
+
+        # RK buffers
+        k1 = np.empty(dim)
+        k2 = np.empty(dim)
+        k3 = np.empty(dim)
+        k4 = np.empty(dim)
+
         for i in range(steps - 1):
-            k_1 = func(y[i, :], *args, **kwargs)
-            k_2 = func(y[i, :] + k_1 * time_step / 2, *args, **kwargs)
-            k_3 = func(y[i, :] + k_2 * time_step / 2, *args, **kwargs)
-            k_4 = func(y[i, :] + k_3 * time_step, *args, **kwargs)
-            y[i + 1, :] = y[i, :] + time_step / 6 * (k_1 + 2 * k_2 + 2 * k_3 + k_4)
+            func(y[i, :], k1, *args, **kwargs)
+            func(y[i, :] + k1 * time_step / 2, k2, *args, **kwargs)
+            func(y[i, :] + k2 * time_step / 2, k3, *args, **kwargs)
+            func(y[i, :] + k3 * time_step, k4, *args, **kwargs)
+            y[i + 1, :] = y[i, :] + time_step / 6 * (k1 + 2 * k2 + 2 * k3 + k4)
             # Uncomment for debugging
             # progress.print(i=i)
         # progress.print(i=steps)

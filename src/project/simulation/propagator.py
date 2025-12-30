@@ -1,8 +1,6 @@
 from pathlib import Path
 from typing import Literal
 
-import numpy as np
-
 from project.simulation.integrator import Integrator
 from project.simulation.model import ForceKernel
 from project.utils.cache import simstate_view_from_state_view, write_simstate
@@ -23,7 +21,6 @@ class Propagator:
         body_list: BodyList,
         filename: Path | None = None,
     ) -> None:
-        buffer = np.zeros((6 * body_list.n,))
         y = self.integrator(
             body_list.y_0,
             time_step,
@@ -31,7 +28,6 @@ class Propagator:
             self.force_model,
             n=body_list.n,
             mu=body_list.mu,
-            out=buffer,
         )  # y.shape = (steps, 6*bodies)
 
         if filename is not None:
