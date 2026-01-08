@@ -1,6 +1,6 @@
 import os
 
-from project.simulation.model import NumpyPointMass
+from project.simulation.model import NumbaPointMass
 from project.simulation.propagator import Propagator
 from project.utils import Dir
 from project.utils.data import BodyList
@@ -28,7 +28,7 @@ class Simulation:
         if not os.path.exists(file_traj):
             print(f"Simulating {time:.2e} seconds...")
             # simulate_n_steps(self.body_list, self.steps, dt, file_traj, prnt=True)
-            p = Propagator("rk4", NumpyPointMass())
+            p = Propagator("rk4", NumbaPointMass())
             p.propagate(
                 time_step=dt,
                 stop_time=int(self.steps * dt),

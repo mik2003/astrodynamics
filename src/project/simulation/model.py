@@ -27,6 +27,47 @@ class NumbaPointMass(ForceKernel):
     ) -> None:
         point_mass_numba(state, n, mu, out)
 
+    def _rk4_backend(
+        self,
+        state: FloatArray,
+        time_step: float,
+        stop_time: float,
+        n: int,
+        mu: FloatArray,
+    ) -> FloatArray:
+        steps = int(stop_time / time_step) + 1
+        return _rk4_numba(state, time_step, steps, n, mu, np.empty_like(state))
+
+
+@nb.njit(fastmath=True, cache=True)
+def _rk4_numba(
+    state: FloatArray,
+    time_step: float,
+    steps: int,
+    n: int,
+    mu: FloatArray,
+    out: FloatArray,
+) -> FloatArray:
+    dim = state.size
+
+    y = np.empty((steps, dim))
+    y[0] = state
+
+    k1 = np.empty(dim)
+    k2 = np.empty(dim)
+    k3 = np.empty(dim)
+    k4 = np.empty(dim)
+
+    for i in range(steps - 1):
+        point_mass_numba(y[i], n, mu, k1)
+        point_mass_numba(y[i] + 0.5 * time_step * k1, n, mu, k2)
+        point_mass_numba(y[i] + 0.5 * time_step * k2, n, mu, k3)
+        point_mass_numba(y[i] + time_step * k3, n, mu, k4)
+
+        y[i + 1] = y[i] + (time_step / 6.0) * (k1 + 2.0 * k2 + 2.0 * k3 + k4)
+
+    return y
+
 
 class CPPPointMass(ForceKernel):
     def __call__(

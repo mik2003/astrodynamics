@@ -1,6 +1,7 @@
 import time
 from pathlib import Path
 
+import numba as nb
 import numpy as np
 
 from project.utils import Float, FloatArray, print_done, print_progress
@@ -40,6 +41,31 @@ def _pairwise_potential_energy(r: FloatArray, mu: FloatArray) -> Float:
     with np.errstate(divide="ignore", invalid="ignore"):
         U: FloatArray = -(mu[i_idx] * mu[j_idx]) / (G * dist)
     return np.nansum(U)
+
+
+@nb.njit(fastmath=True, cache=True)
+def _pairwise_potential_energy_numba(r: FloatArray, mu: FloatArray, G: float) -> Float:
+    n = r.shape[1]
+    U = 0.0
+
+    for i in range(n):
+        xi = r[0, i]
+        yi = r[1, i]
+        zi = r[2, i]
+
+        mui = mu[i]
+
+        for j in range(i + 1, n):
+            dx = xi - r[0, j]
+            dy = yi - r[1, j]
+            dz = zi - r[2, j]
+
+            r2 = dx * dx + dy * dy + dz * dz
+            inv_r = 1.0 / np.sqrt(r2)
+
+            U -= mui * mu[j] * inv_r / G
+
+    return U
 
 
 # ============================================================================
@@ -101,7 +127,7 @@ def calculate_integrals(
         T = 0.5 * np.sum(masses * np.sum(v**2, axis=0))
 
         # Potential energy
-        U = _pairwise_potential_energy(r, mu)
+        U = _pairwise_potential_energy_numba(r, mu, G)
 
         # Total energy
         integrals[t, 0] = T + U
@@ -130,9 +156,9 @@ if __name__ == "__main__":
 
     # Load simulation
     sim = Simulation(
-        name="inner_solar_system_2460959",
+        name="solar_system_2460967",
         dt=3600,
-        time=3600 * 24 * 365.25 * 100,
+        time=3600 * 24 * 365.25 * 1000,
     )
 
     mu_list = [body.mu for body in sim.body_list]
