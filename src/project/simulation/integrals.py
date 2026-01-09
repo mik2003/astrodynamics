@@ -156,7 +156,7 @@ if __name__ == "__main__":
 
     # Load simulation
     sim = Simulation(
-        name="solar_system",
+        name="solar_system_dwarf",
         horizons=True,
         epoch=(2026, 1, 1),
         dt=3600,
