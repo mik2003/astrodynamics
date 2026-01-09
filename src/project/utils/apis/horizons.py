@@ -7,15 +7,77 @@ import tomllib
 from datetime import datetime
 from hashlib import sha1
 from io import StringIO
-from typing import Any, Dict, List, Tuple, cast, get_args
+from typing import Any, Dict, List, Literal, NotRequired, Tuple, TypedDict
 
 import numpy as np
 import requests
 import tomli_w
 
 from project.utils import Dir, FloatArray, T
-from project.utils.horizons.const import Body, HorizonsParams
+from project.utils.apis.systeme_solaire import SystemeSolaireBodies
+from project.utils.body_registry import BODY_REGISTRY, BodyID
 from project.utils.time_utils import TimeConvert
+
+
+class HorizonsParams(TypedDict):
+    """Parameters for the Horizons API"""
+
+    # Common Parameters
+    format: NotRequired[Literal["json", "text"]]  # json
+    COMMAND: NotRequired[str]  # none
+    OBJ_DATA: NotRequired[Literal["'NO'", "'YES'"]]  # YES
+    MAKE_EPHEM: NotRequired[Literal["'NO'", "'YES'"]]  # YES
+    EPHEM_TYPE: NotRequired[
+        Literal["'OBSERVER'", "'VECTORS'", "'ELEMENTS'", "'SPK'", "'APPROACH'"]
+    ]  # OBSERVER
+    EMAIL_ADDR: NotRequired[str]  # none
+    # Ephemeris-Specific Parameters
+    CENTER: NotRequired[str]  # Geocentric
+    REF_PLANE: NotRequired[
+        Literal["'ECLIPTIC'", "'FRAME'", "'BODY EQUATOR'"]
+    ]  # ECLIPTIC
+    COORD_TYPE: NotRequired[Literal["'GEODETIC'", "'CYLINDRICAL'"]]  # GEODETIC
+    SITE_COORD: NotRequired[str]  # '0,0,0'
+    START_TIME: NotRequired[str]  # none
+    STOP_TIME: NotRequired[str]  # none
+    STEP_SIZE: NotRequired[str]  # '60 min'
+    TIME_DIGITS: NotRequired[Literal["'MINUTES'", "'SECONDS'", "'FRACSEC'"]]  # MINUTES
+    TIME_TYPE: NotRequired[Literal["'UT'", "'TT'", "'TDB'"]]  # varies with EPHEM_TYPE
+    TIME_ZONE: NotRequired[str]  # '+00:00'
+    TLIST: NotRequired[str]  # none
+    TLIST_TYPE: NotRequired[Literal["'JD'", "'MJD'", "'CAL'"]]  # none
+    QUANTITIES: NotRequired[Literal["'A'"]]  # 'A'
+    REF_SYSTEM: NotRequired[Literal["'ICRF'", "'B1950'"]]  # ICRF
+    OUT_UNITS: NotRequired[Literal["'KM-S'", "'AU-D'", "'KM-D'"]]  # KM-S
+    VEC_TABLE: NotRequired[
+        Literal[
+            "'1'",
+            "'1x'",
+            "'1xa'",
+            "'1xar'",
+            "'1xarp'",
+            "'2'",
+            "'2x'",
+            "'2xa'",
+            "'2xar'",
+            "'2xarp'",
+            "'3'",
+            "'4'",
+            "'5'",
+            "'6'",
+        ]
+    ]  # 3
+    VEC_CORR: NotRequired[Literal["'NONE'", "'LT'", "'LT+S'"]]  # NONE
+    CAL_FORMAT: NotRequired[Literal["'CAL'", "'JD'", "'BOTH'"]]  # CAL
+    CAL_TYPE: NotRequired[Literal["'MIXED'", "'GREGORIAN'"]]  # MIXED
+    ANG_FORMAT: NotRequired[Literal["'HMS'", "'DEG'"]]  # HMS
+    APPARENT: NotRequired[Literal["'AIRLESS'", "'REFRACTED'"]]  # AIRLESS
+    RANGE_UNITS: NotRequired[Literal["'AU'", "'KM'"]]  # AU
+    # ... TODO
+    CSV_FORMAT: NotRequired[Literal["'NO'", "'YES'"]]  # NO
+    VEC_LABELS: NotRequired[Literal["'NO'", "'YES'"]]  # YES
+    VEC_DELTA_T: NotRequired[Literal["'NO'", "'YES'"]]  # NO
+    # ... TODO
 
 
 class Horizons:
@@ -42,7 +104,6 @@ class Horizons:
         params_hash = sha1(
             repr(json.dumps(params, sort_keys=True)).encode()
         ).hexdigest()
-        print(params_hash)
         cache_path = Dir.horizons / f"horizons_{params_hash}.txt"
 
         if os.path.exists(cache_path):
@@ -65,26 +126,32 @@ class Horizons:
         return out
 
     @staticmethod
-    def retrieve_body_year(body_name: Body, year: int) -> str:
+    def retrieve_body_year(body: BodyID, year: int) -> str:
         """Retrieve body position in SSB (Solar System Barycenter) inertial frame
         for an entire year, with 1 h sampling
 
         Parameters
         ----------
-        body_name : Body
-            Name of body (see Horizons API name scheme)
+        body : BodyID
+            ID of body
         year : int
             Year
 
         Returns
         -------
         str
-            Horizonss data
+            Horizons data
         """
+        horizon_id = BODY_REGISTRY[body].horizons_id
+        if len(horizon_id) == 8:
+            command = f"'DES={horizon_id};'"
+        else:
+            command = f"'{horizon_id}'"
+
         return Horizons.get(
             params={
                 "format": "text",
-                "COMMAND": f"'{Horizons.body(body_name)}'",
+                "COMMAND": command,
                 "EPHEM_TYPE": "'VECTORS'",
                 "CENTER": "'500@0'",
                 "REF_PLANE": "'FRAME'",
@@ -158,19 +225,19 @@ class HorizonsResponse:
 
 
 class HorizonsBodyYear(HorizonsResponse):
-    def __init__(self, body_name: Body, year: int) -> None:
+    def __init__(self, body: BodyID, year: int) -> None:
         """Wrapper for Horizons response of single body single year
 
         Parameters
         ----------
-        body_name : Body
-            Name of body (see Horizons API name scheme)
+        body : BodyID
+            ID of body
         year : int
             Year of position
         """
-        self.text = Horizons.retrieve_body_year(body_name=body_name, year=year)
+        self.text = Horizons.retrieve_body_year(body=body, year=year)
 
-        self.name = body_name
+        self.name = body
         self.year = year
 
         data_str = self.text.split("$$SOE")[1].split("$$EOE")[0]
@@ -271,7 +338,9 @@ class HorizonsBodyYear(HorizonsResponse):
         return self._gm * 1e9
 
 
-def generate_sim_file(name: str, bodies: List[str], time: Tuple[int, int, int]) -> None:
+def generate_sim_file(
+    name: str, bodies: List[BodyID], time: Tuple[int, int, int]
+) -> None:
     out: Dict[str, Any] = {
         "metadata": {
             "epoch": f"{time[0]:04d}-{time[1]:02d}-{time[2]:02d} 00:00:00",
@@ -279,16 +348,18 @@ def generate_sim_file(name: str, bodies: List[str], time: Tuple[int, int, int]) 
         },
         "body_list": [],
     }
+    ssb = SystemeSolaireBodies()
+
     for body in bodies:
-        if body not in get_args(Body):
-            raise ValueError(f"{body} not available in Horizons")
-        hr = HorizonsBodyYear(body_name=cast(Body, body), year=time[0])
+        hr = HorizonsBodyYear(body=body, year=time[0])
         y0 = hr.get_state(time[1], time[2])
+        info = ssb.get_body_info(body)
 
         out["body_list"].append(
             {
                 "name": body,
-                "mu": hr.gm,
+                "mu": info["gm"],
+                "radius": info["radius"],
                 "r_0": y0[:3].tolist(),
                 "v_0": y0[3:].tolist(),
             }

@@ -74,6 +74,9 @@ class Dir:
     horizons = cache / "horizons"
     test = cache / "test"
     secret = root / ".secret"
+    src = root / "src"
+    project = src / "project"
+    utils = project / "utils"
 
     # Files
     api_keys = secret / "api-keys.toml"

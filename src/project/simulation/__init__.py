@@ -1,11 +1,11 @@
 from typing import Tuple
 
 from project.simulation.model import NumbaPointMass
-from project.simulation.presets import BodySystemPreset
+from project.simulation.presets import BodyPresets
 from project.simulation.propagator import Propagator
 from project.utils import Dir
+from project.utils.apis.horizons import generate_sim_file
 from project.utils.data import BodyList
-from project.utils.horizons import generate_sim_file
 from project.utils.simstate import SIMSTATE_FILE, SimstateMemmap
 
 
@@ -32,10 +32,10 @@ class Simulation:
         file_traj = Dir.simulation / SIMSTATE_FILE.format(self.name, dt, self.steps)
 
         if not file_in.exists():
-            if horizons and epoch is not None and hasattr(BodySystemPreset, name):
+            if horizons and epoch is not None and hasattr(BodyPresets, name):
                 generate_sim_file(
                     name=self.name,
-                    bodies=getattr(BodySystemPreset, name),
+                    bodies=getattr(BodyPresets, name),
                     time=epoch,
                 )
             else:

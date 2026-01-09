@@ -1,159 +1,142 @@
-from typing import List
-
-from project.utils.horizons import Body
+from project.utils.body_registry import BodyID
 
 
-class BodySystemPreset:
-    sun_earth_moon: List[Body] = [
-        "Sun",
-        "Earth",
-        "Moon",
+class BodyPresets:
+    sun_earth_moon: list[BodyID] = [
+        BodyID.SUN,
+        BodyID.EARTH,
+        BodyID.MOON,
     ]
 
-    inner_solar_system: List[Body] = [
-        "Sun",
-        "Mercury",
-        "Venus",
-        "Earth",
-        "Moon",
-        "Mars",
+    inner_solar_system: list[BodyID] = [
+        BodyID.SUN,
+        BodyID.MERCURY,
+        BodyID.VENUS,
+        BodyID.EARTH,
+        BodyID.MOON,
+        BodyID.MARS,
     ]
 
-    inner_solar_system_jupiter: List[Body] = [
-        "Sun",
-        "Mercury",
-        "Venus",
-        "Earth",
-        "Moon",
-        "Mars",
-        "Jupiter",
+    inner_solar_system_jupiter: list[BodyID] = [
+        BodyID.SUN,
+        BodyID.MERCURY,
+        BodyID.VENUS,
+        BodyID.EARTH,
+        BodyID.MOON,
+        BodyID.MARS,
+        BodyID.JUPITER,
     ]
 
-    # Main planets (traditional solar system)
-    solar_system: List[Body] = [
-        "Sun",
-        "Mercury",
-        "Venus",
-        "Earth",
-        "Moon",
-        "Mars",
-        "Jupiter",
-        "Saturn",
-        "Uranus",
-        "Neptune",
+    solar_system: list[BodyID] = [
+        BodyID.SUN,
+        BodyID.MERCURY,
+        BodyID.VENUS,
+        BodyID.EARTH,
+        BodyID.MOON,
+        BodyID.MARS,
+        BodyID.JUPITER,
+        BodyID.SATURN,
+        BodyID.URANUS,
+        BodyID.NEPTUNE,
     ]
 
-    # Main planets + dwarf planets
-    solar_system_dwarf: List[Body] = [
-        "Sun",
-        "Mercury",
-        "Venus",
-        "Earth",
-        "Moon",
-        "Mars",
-        "Jupiter",
-        "Saturn",
-        "Uranus",
-        "Neptune",
+    solar_system_dwarf: list[BodyID] = [
+        BodyID.SUN,
+        BodyID.MERCURY,
+        BodyID.VENUS,
+        BodyID.EARTH,
+        BodyID.MOON,
+        BodyID.MARS,
+        BodyID.JUPITER,
+        BodyID.SATURN,
+        BodyID.URANUS,
+        BodyID.NEPTUNE,
         # Dwarf planets
-        "Ceres",
-        "Pluto",
-        "Haumea",
-        "Makemake",
-        "Eris",
+        BodyID.N_1_CERES,
+        BodyID.PLUTO,
+        BodyID.N_136108_HAUMEA,
+        BodyID.N_136472_MAKEMAKE,
+        BodyID.N_136199_ERIS,
     ]
 
-    # Main planets + major moons
-    solar_system_moons: List[Body] = [
-        "Sun",
-        "Mercury",
-        "Venus",
-        # Earth system
-        "Earth",
-        "Moon",
-        # Mars system
-        "Mars",
-        "Phobos",
-        "Deimos",
-        # Jupiter system
-        "Jupiter",
-        "Io",
-        "Europa",
-        "Ganymede",
-        "Callisto",
-        "Amalthea",
-        "Himalia",
-        "Thebe",
-        "Adrastea",
-        "Metis",
-        # Saturn system
-        "Saturn",
-        "Mimas",
-        "Enceladus",
-        "Tethys",
-        "Dione",
-        "Rhea",
-        "Titan",
-        "Hyperion",
-        "Iapetus",
-        "Phoebe",
-        "Janus",
-        "Epimetheus",
-        "Helene",
-        "Atlas",
-        "Prometheus",
-        "Pandora",
-        "Pan",
-        # Uranus system
-        "Uranus",
-        "Ariel",
-        "Umbriel",
-        "Titania",
-        "Oberon",
-        "Miranda",
-        # Neptune system
-        "Neptune",
-        "Triton",
-        "Nereid",
-        "Naiad",
-        "Thalassa",
-        "Despina",
-        "Galatea",
-        "Larissa",
-        "Proteus",
-        # Pluto system
-        "Pluto",
-        "Charon",
-        "Nix",
-        "Hydra",
-        "Kerberos",
-        "Styx",
-        # Dwarf planets
-        "Charon",
-        "Ceres",
-        "Eris",
-        "Haumea",
-        "Makemake",
+    solar_system_moons: list[BodyID] = [
+        BodyID.SUN,
+        BodyID.MERCURY,
+        BodyID.VENUS,
+        BodyID.EARTH,
+        BodyID.MOON,
+        BodyID.MARS,
+        BodyID.PHOBOS,
+        BodyID.DEIMOS,
+        BodyID.JUPITER,
+        BodyID.IO,
+        BodyID.EUROPA,
+        BodyID.GANYMEDE,
+        BodyID.CALLISTO,
+        BodyID.AMALTHEA,
+        BodyID.HIMALIA,
+        BodyID.THEBE,
+        BodyID.ADRASTEA,
+        BodyID.METIS,
+        BodyID.SATURN,
+        BodyID.MIMAS,
+        BodyID.ENCELADUS,
+        BodyID.TETHYS,
+        BodyID.DIONE,
+        BodyID.RHEA,
+        BodyID.TITAN,
+        BodyID.HYPERION,
+        BodyID.IAPETUS,
+        BodyID.PHOEBE,
+        BodyID.JANUS,
+        BodyID.EPIMETHEUS,
+        BodyID.HELENE,
+        BodyID.ATLAS,
+        BodyID.PROMETHEUS,
+        BodyID.PANDORA,
+        BodyID.PAN,
+        BodyID.URANUS,
+        BodyID.ARIEL,
+        BodyID.UMBRIEL,
+        BodyID.TITANIA,
+        BodyID.OBERON,
+        BodyID.MIRANDA,
+        BodyID.NEPTUNE,
+        BodyID.TRITON,
+        BodyID.NEREID,
+        BodyID.NAIAD,
+        BodyID.THALASSA,
+        BodyID.DESPINA,
+        BodyID.GALATEA,
+        BodyID.LARISSA,
+        BodyID.PROTEUS,
+        BodyID.PLUTO,
+        BodyID.CHARON,
+        BodyID.NIX,
+        BodyID.HYDRA,
+        BodyID.KERBEROS,
+        BodyID.STYX,
+        BodyID.N_1_CERES,
+        BodyID.N_136108_HAUMEA,
+        BodyID.N_136472_MAKEMAKE,
+        BodyID.N_136199_ERIS,
     ]
 
 
 if __name__ == "__main__":
-    # import time
-    # from typing import List
+    import time
 
-    # from project.utils.horizons import HorizonsBodyYear
+    from project.utils.apis.horizons import HorizonsBodyYear
 
-    # t0 = time.time()
+    t0 = time.time()
 
-    # for body in BodySystemPreset.solar_system_moons:
-    #     print(f"Retrieving {body}...")
-    #     b = HorizonsBodyYear(body, 2025)
-    #     try:
-    #         print("Mean radius", b.radius)
-    #         print("GM", b.gm)
-    #     except ValueError as e:
-    #         print(e)
+    for body in BodyPresets.solar_system_moons:
+        print(f"Retrieving {body}...")
+        b = HorizonsBodyYear(body, 2026)
+        try:
+            print("Mean radius", b.radius)
+            print("GM", b.gm)
+        except ValueError as e:
+            print(e)
 
-    # print(f"Time elapsed: {time.time() - t0:.2f} [s]")
-
-    print(hasattr(BodySystemPreset, "solar_system_moons"))
+    print(f"Time elapsed: {time.time() - t0:.2f} [s]")

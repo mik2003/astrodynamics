@@ -2,96 +2,166 @@ import json
 import tomllib
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, List, Tuple
 
 from project.utils import Dir
 
+# ---------------------------------------------------------------------------
+# Loaders
+# ---------------------------------------------------------------------------
 
-def load_systeme_solaire(path: Path) -> Dict[str, Any]:
+
+def load_systeme_solaire(path: Path) -> Dict[str, Dict[str, Any]]:
+    """Return bodies indexed by englishName."""
     with path.open("r", encoding="utf-8") as f:
         data = json.load(f)
-    return {b["englishName"]: b for b in data["bodies"]}
+
+    return {b["englishName"]: b for b in data["bodies"] if b.get("englishName")}
 
 
 def load_horizons(path: Path) -> Dict[str, str]:
     """
-    Returns: { horizons_name : horizons_id }
+    Returns:
+        { horizons_name : horizons_command }
+    where horizons_command is either an MB alias or NAIF ID
     """
     with path.open("rb") as f:
         return tomllib.load(f)
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
 
 
 def normalize_name(name: str) -> str:
     return name.lower().replace(" ", "").replace("-", "").replace("_", "")
 
 
-def extract_naif_id(value: str) -> str | None:
-    # Horizons IDs are numeric strings
-    if value.isdigit():
-        return value
-    return None
+def infer_naif_from_name(name: str) -> str | None:
+    """
+    Infer Horizons command from Système Solaire englishName.
+
+    Examples:
+        "1 Ceres"        -> "20'000'001"
+        "101955 Bennu"   -> "20'101'955"
+    """
+    first = name.split()[0]
+    return str(int(first) + 20_000_000) if first.isdigit() else None
+
+
+def enum_safe_name(name: str) -> str:
+    """
+    Convert a body name into a valid Python enum identifier.
+    """
+    cleaned = (
+        name.upper()
+        .replace(" ", "_")
+        .replace("-", "_")
+        .replace("(", "")
+        .replace(")", "")
+    )
+
+    if cleaned[0].isdigit():
+        return f"N_{cleaned}"
+
+    return cleaned
+
+
+# ---------------------------------------------------------------------------
+# Registry model
+# ---------------------------------------------------------------------------
 
 
 @dataclass(frozen=True)
 class RegistryEntry:
-    canonical_name: str
-    horizons_id: str
-    systeme_solaire_name: str
+    canonical_name: str  # Système Solaire englishName
+    horizons_id: str  # Horizons COMMAND
+    systeme_solaire_name: str  # Same as canonical_name (explicit)
+
+
+# ---------------------------------------------------------------------------
+# Registry generation
+# ---------------------------------------------------------------------------
 
 
 def generate_body_registry(
     horizons_toml: Path,
     systeme_solaire_json: Path,
-) -> tuple[list[RegistryEntry], list[str]]:
+) -> Tuple[List[RegistryEntry], List[str]]:
     horizons = load_horizons(horizons_toml)
     ss = load_systeme_solaire(systeme_solaire_json)
 
-    ss_by_norm = {normalize_name(name): name for name in ss}
+    ss_norm = {normalize_name(name): name for name in ss}
 
     registry: list[RegistryEntry] = []
     unresolved: list[str] = []
 
-    for h_name, h_id in horizons.items():
-        naif_id = extract_naif_id(h_id)
+    # --- Pass 1: Horizons MB objects ---
+    for h_name, h_cmd in horizons.items():
+        ss_name = None
 
-        # Prefer exact NAIF match
-        ss_match = None
-        if naif_id:
-            for ss_name, body in ss.items():
-                if str(body.get("id")) == naif_id:
-                    ss_match = ss_name
-                    break
+        # Exact englishName match
+        if h_name in ss:
+            ss_name = h_name
 
-        # Fallback: normalized name match
-        if ss_match is None:
-            key = normalize_name(h_name)
-            ss_match = ss_by_norm.get(key)
+        # Normalized fallback
+        if ss_name is None:
+            ss_name = ss_norm.get(normalize_name(h_name))
 
-        # 🚨 Reject empty names explicitly
-        if not ss_match:
-            unresolved.append(h_name)
-            continue
-
-        if ss_match is None:
+        if ss_name is None:
             unresolved.append(h_name)
             continue
 
         registry.append(
             RegistryEntry(
-                canonical_name=ss_match,
-                horizons_id=h_id,
-                systeme_solaire_name=ss_match,
+                canonical_name=ss_name,
+                horizons_id=h_cmd,
+                systeme_solaire_name=ss_name,
             )
         )
 
+    # --- Pass 2: Small bodies not in Horizons MB ---
+    registered = {r.canonical_name for r in registry}
+
+    for ss_name, body in ss.items():
+        if ss_name in registered:
+            continue
+
+        if body.get("bodyType") not in {
+            "Asteroid",
+            "Dwarf Planet",
+            "Comet",
+        }:
+            continue
+
+        naif = infer_naif_from_name(ss_name)
+        if naif is None:
+            continue
+
+        registry.append(
+            RegistryEntry(
+                canonical_name=ss_name,
+                horizons_id=naif,
+                systeme_solaire_name=ss_name,
+            )
+        )
+
+    registry.sort(key=lambda r: r.canonical_name)
     return registry, unresolved
 
 
+# ---------------------------------------------------------------------------
+# Code generation
+# ---------------------------------------------------------------------------
+
+
 def emit_registry_py(
-    registry: list[RegistryEntry],
+    registry: List[RegistryEntry],
     out_path: Path,
 ) -> None:
-    lines = []
+    lines: list[str] = []
+
     lines.append("# AUTO-GENERATED — DO NOT EDIT\n")
     lines.append("from dataclasses import dataclass\n")
     lines.append("from enum import Enum\n\n\n")
@@ -99,7 +169,7 @@ def emit_registry_py(
     # Enum
     lines.append("class BodyID(str, Enum):\n")
     for r in registry:
-        enum_name = r.canonical_name.upper().replace(" ", "_").replace("-", "_")
+        enum_name = enum_safe_name(r.canonical_name)
         lines.append(f'    {enum_name} = "{r.canonical_name}"\n')
 
     # Dataclass
@@ -108,10 +178,10 @@ def emit_registry_py(
     lines.append("    horizons_id: str\n")
     lines.append("    systeme_solaire_name: str\n\n")
 
-    # Registry
+    # Registry mapping
     lines.append("BODY_REGISTRY = {\n")
     for r in registry:
-        enum_name = r.canonical_name.upper().replace(" ", "_").replace("-", "_")
+        enum_name = enum_safe_name(r.canonical_name)
         lines.append(
             f"    BodyID.{enum_name}: "
             f'BodyInfo("{r.horizons_id}", "{r.systeme_solaire_name}"),\n'
@@ -121,6 +191,10 @@ def emit_registry_py(
     out_path.write_text("".join(lines), encoding="utf-8")
 
 
+# ---------------------------------------------------------------------------
+# Entrypoint
+# ---------------------------------------------------------------------------
+
 if __name__ == "__main__":
     registry, unresolved = generate_body_registry(
         horizons_toml=Dir.horizons / "horizons__body_names.toml",
@@ -129,10 +203,10 @@ if __name__ == "__main__":
 
     emit_registry_py(
         registry,
-        out_path=Dir.data / "auto_body_registry.py",
+        out_path=Dir.utils / "body_registry.py",
     )
 
     if unresolved:
-        print("⚠️ Unresolved bodies:")
+        print("⚠️ Unresolved Horizons names:")
         for name in unresolved:
             print("  -", name)

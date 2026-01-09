@@ -3,7 +3,7 @@ from project.ui import Visualization
 
 if __name__ == "__main__":
     sim = Simulation(
-        name="solar_system",
+        name="solar_system_dwarf",
         horizons=True,
         epoch=(2026, 1, 1),
         # name="sun_earth_moon_2460966",
