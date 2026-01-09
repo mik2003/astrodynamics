@@ -1,0 +1,2015 @@
+[Moon]
+Radius = 1737.0
+GM = 4902.94078
+
+[Phobos]
+Radius = 11.1
+GM = 0.0007074758
+
+[Deimos]
+Radius = 6.2
+GM = 9.85260166e-05
+
+[Io]
+Radius = 1821.5
+GM = 5961.48476
+
+[Europa]
+Radius = 1560.8
+GM = 3203.664
+
+[Ganymede]
+Radius = 2631.2
+GM = 9890.64517
+
+[Callisto]
+Radius = 2410.3
+GM = 7180.87937
+
+[Amalthea]
+Radius = 84.0
+GM = 0.5005725
+
+[Himalia]
+Radius = 85.0
+GM = 0.6340585
+
+[Elara]
+Radius = 40.0
+GM = 0.0533944
+
+[Pasiphae]
+Radius = 18.0
+GM = 0.0200229
+
+[Sinope]
+Radius = 14.0
+GM = 0.00533944
+
+[Lysithea]
+Radius = 12.0
+GM = 0.00533944
+
+[Carme]
+Radius = 15.0
+GM = 0.0066743
+
+[Ananke]
+Radius = 10.0
+GM = 0.00266972
+
+[Leda]
+Radius = 5.0
+GM = 0.0400458
+
+[Thebe]
+Radius = 49.0
+GM = 0.0533944
+
+[Adrastea]
+Radius = 8.0
+GM = 0.000133486
+
+[Metis]
+Radius = 22.0
+GM = 0.0066743
+
+[Callirrhoe]
+Radius = 4.0
+GM = 5.806640999999999e-05
+
+[Themisto]
+Radius = 4.0
+GM = 4.605267e-05
+
+[Megaclite]
+Radius = 2.7
+GM = 1.401603e-05
+
+[Taygete]
+Radius = 2.5
+GM = 1.067888e-05
+
+[Chaldene]
+Radius = 1.9
+GM = 5.005725e-06
+
+[Harpalyke]
+Radius = 2.2
+GM = 8.00916e-06
+
+[Kalyke]
+Radius = 2.6
+GM = 1.268117e-05
+
+[Iocaste]
+Radius = 2.6
+GM = 1.268117e-05
+
+[Erinome]
+Radius = 1.6
+GM = 3.003435e-06
+
+[Isonoe]
+Radius = 1.9
+GM = 5.005725e-06
+
+[Praxidike]
+Radius = 3.4
+GM = 2.869949e-05
+
+[Autonoe]
+Radius = 2.0
+GM = 6.00687e-06
+
+[Thyone]
+Radius = 2.0
+GM = 6.00687e-06
+
+[Hermippe]
+Radius = 2.0
+GM = 6.00687e-06
+
+[Aitne]
+Radius = 1.5
+GM = 3.003435e-06
+
+[Eurydome]
+Radius = 1.5
+GM = 3.003435e-06
+
+[Euanthe]
+Radius = 1.5
+GM = 3.003435e-06
+
+[Euporie]
+Radius = 1.0
+GM = 1.001145e-06
+
+[Orthosie]
+Radius = 1.0
+GM = 1.001145e-06
+
+[Sponde]
+Radius = 1.0
+GM = 1.001145e-06
+
+[Kale]
+Radius = 1.0
+GM = 1.001145e-06
+
+[Pasithee]
+Radius = 1.0
+GM = 1.001145e-06
+
+[Hegemone]
+Radius = 2.0
+GM = 3.003435e-06
+
+[Mneme]
+Radius = 2.0
+GM = 1.001145e-06
+
+[Aoede]
+Radius = 2.0
+GM = 6.00687e-06
+
+[Thelxinoe]
+Radius = 2.0
+GM = 1.001145e-06
+
+[Arche]
+Radius = 1.5
+GM = 2.7698345e-06
+
+[Kallichore]
+Radius = 2.0
+GM = 1.001145e-06
+
+[Helike]
+Radius = 4.0
+GM = 6.00687e-06
+
+[Carpo]
+Radius = 3.0
+GM = 3.003435e-06
+
+[Eukelade]
+Radius = 4.0
+GM = 6.00687e-06
+
+[Cyllene]
+Radius = 1.0
+GM = 1.001145e-06
+
+[Kore]
+Radius = 1.0
+GM = 1.001145e-06
+
+[Herse]
+Radius = 2.0
+GM = 1.001145e-06
+
+["S/2003 J 2"]
+Radius = 1.0
+GM = 1.001145e-06
+
+[Eupheme]
+Radius = 1.0
+GM = 1.001145e-06
+
+["S/2003 J 4"]
+Radius = 1.0
+GM = 1.001145e-06
+
+[Eirene]
+Radius = 2.0
+GM = 6.00687e-06
+
+["S/2003 J 9"]
+Radius = 0.5
+GM = 1.001145e-07
+
+["S/2003 J 10"]
+Radius = 1.0
+GM = 1.001145e-06
+
+["S/2003 J 12"]
+Radius = 0.5
+GM = 6.6743e-08
+
+[Philophrosyne]
+Radius = 1.0
+GM = 1.001145e-06
+
+["S/2003 J 16"]
+Radius = 1.0
+GM = 1.001145e-06
+
+["S/2003 J 18"]
+Radius = 1.0
+GM = 1.001145e-06
+
+["S/2003 J 19"]
+Radius = 1.0
+GM = 1.001145e-06
+
+["S/2003 J 23"]
+Radius = 1.0
+GM = 1.001145e-06
+
+[Mimas]
+Radius = 396.4
+GM = 2.5295597
+
+[Enceladus]
+Radius = 504.2
+GM = 7.208244
+
+[Tethys]
+Radius = 1066.0
+GM = 41.247174
+
+[Dione]
+Radius = 1123.4
+GM = 73.083585
+
+[Rhea]
+Radius = 1528.6
+GM = 153.50889999999998
+
+[Titan]
+Radius = 2575.0
+GM = 8978.268359999998
+
+[Hyperion]
+Radius = 266.0
+GM = 0.3737608
+
+[Iapetus]
+Radius = 1471.2
+GM = 120.471115
+
+[Phoebe]
+Radius = 214.4
+GM = 0.553432956
+
+[Janus]
+Radius = 89.5
+GM = 0.1268117
+
+[Epimetheus]
+Radius = 113.4
+GM = 0.03537379
+
+[Helene]
+Radius = 17.6
+GM = 7.34173e-10
+
+[Telesto]
+Radius = 12.4
+GM = 0.00066743
+
+[Calypso]
+Radius = 10.7
+GM = 0.0004338295
+
+[Atlas]
+Radius = 15.1
+GM = 0.000467201
+
+[Prometheus]
+Radius = 43.1
+GM = 0.01067888
+
+[Pandora]
+Radius = 40.7
+GM = 0.00934402
+
+[Pan]
+Radius = 14.1
+GM = 0.00033037785
+
+[Ymir]
+Radius = 9.0
+GM = 0.00026496971
+
+[Paaliaq]
+Radius = 10.0
+GM = 0.00048388675
+
+[Tarvos]
+Radius = 7.0
+GM = 0.0001535089
+
+[Ijiraq]
+Radius = 5.0
+GM = 7.875674e-05
+
+[Suttungr]
+Radius = 3.0
+GM = 1.5350889999999998e-05
+
+[Kiviuq]
+Radius = 7.0
+GM = 0.00018621297
+
+[Mundilfari]
+Radius = 3.0
+GM = 1.5350889999999998e-05
+
+[Albiorix]
+Radius = 13.0
+GM = 0.0014883689
+
+[Skathi]
+Radius = 3.0
+GM = 2.336005e-05
+
+[Erriapus]
+Radius = 4.0
+GM = 4.538524e-05
+
+[Siarnaq]
+Radius = 16.0
+GM = 0.0029033205
+
+[Thrymr]
+Radius = 3.0
+GM = 1.5350889999999998e-05
+
+[Narvi]
+Radius = 3.0
+GM = 1.5350889999999998e-05
+
+[Methone]
+Radius = 1.6
+GM = 1.33486e-06
+
+[Pallene]
+Radius = 2.5
+GM = 4.00458e-06
+
+[Polydeuces]
+Radius = 2.0
+GM = 6.6743e-07
+
+[Daphnis]
+Radius = 3.8
+GM = 6.6743e-06
+
+[Aegir]
+Radius = 3.0
+GM = 1.001145e-05
+
+[Bebhionn]
+Radius = 3.0
+GM = 1.001145e-05
+
+[Bergelmir]
+Radius = 3.0
+GM = 1.001145e-05
+
+[Bestla]
+Radius = 3.0
+GM = 1.5350889999999998e-05
+
+[Farbauti]
+Radius = 3.0
+GM = 6.00687e-06
+
+[Fenrir]
+Radius = 2.0
+GM = 3.33715e-06
+
+[Fornjot]
+Radius = 3.0
+GM = 1.001145e-05
+
+[Hati]
+Radius = 3.0
+GM = 1.001145e-05
+
+[Hyrrokkin]
+Radius = 4.0
+GM = 2.336005e-05
+
+[Kari]
+Radius = 3.0
+GM = 1.5350889999999998e-05
+
+[Loge]
+Radius = 3.0
+GM = 1.001145e-05
+
+[Skoll]
+Radius = 3.0
+GM = 1.001145e-05
+
+[Surtur]
+Radius = 3.0
+GM = 1.001145e-05
+
+[Anthe]
+Radius = 1.0
+GM = 3.33715e-07
+
+[Jarnsaxa]
+Radius = 3.0
+GM = 6.6743e-06
+
+[Greip]
+Radius = 3.0
+GM = 1.001145e-05
+
+[Tarqeq]
+Radius = 3.0
+GM = 1.5350889999999998e-05
+
+[Aegaeon]
+Radius = 0.5
+GM = 6.6742999999999996e-09
+
+["S/2004 S 7"]
+Radius = 3.0
+GM = 1.001145e-05
+
+["S/2004 S 12"]
+Radius = 3.0
+GM = 6.00687e-06
+
+["S/2004 S 13"]
+Radius = 3.0
+GM = 1.001145e-05
+
+["S/2004 S 17"]
+Radius = 2.0
+GM = 3.33715e-06
+
+["S/2006 S 1"]
+Radius = 3.0
+GM = 6.6743e-06
+
+["S/2006 S 3"]
+Radius = 3.0
+GM = 1.001145e-05
+
+["S/2007 S 2"]
+Radius = 3.0
+GM = 1.001145e-05
+
+["S/2007 S 3"]
+Radius = 3.0
+GM = 1.001145e-05
+
+["S/2009 S 1"]
+Radius = 0.3
+GM = 6.6742999999999996e-09
+
+[Ariel]
+Radius = 581.1
+GM = 86.09847
+
+[Umbriel]
+Radius = 584.7
+GM = 81.42646
+
+[Titania]
+Radius = 788.9
+GM = 228.26106000000004
+
+[Oberon]
+Radius = 761.4
+GM = 192.21984
+
+[Miranda]
+Radius = 240.0
+GM = 4.405038
+
+[Cordelia]
+Radius = 20.0
+GM = 0.003003435
+
+[Ophelia]
+Radius = 21.0
+GM = 0.003604122
+
+[Bianca]
+Radius = 27.0
+GM = 0.006140356
+
+[Cressida]
+Radius = 41.0
+GM = 0.02269262
+
+[Desdemona]
+Radius = 35.0
+GM = 0.01201374
+
+[Juliet]
+Radius = 53.0
+GM = 0.03737608
+
+[Portia]
+Radius = 70.0
+GM = 0.1134631
+
+[Rosalind]
+Radius = 36.0
+GM = 0.001668575
+
+[Belinda]
+Radius = 45.0
+GM = 0.03270407
+
+[Puck]
+Radius = 81.0
+GM = 0.1935547
+
+[Caliban]
+Radius = 36.0
+GM = 0.01668575
+
+[Sycorax]
+Radius = 75.0
+GM = 0.15350889999999998
+
+[Prospero]
+Radius = 25.0
+GM = 0.005673155
+
+[Setebos]
+Radius = 24.0
+GM = 0.005005725
+
+[Stephano]
+Radius = 16.0
+GM = 0.001468346
+
+[Trinculo]
+Radius = 9.0
+GM = 0.0002602977
+
+[Francisco]
+Radius = 11.0
+GM = 0.0004805496
+
+[Margaret]
+Radius = 10.0
+GM = 0.0003604122
+
+[Ferdinand]
+Radius = 10.0
+GM = 0.0003604122
+
+[Perdita]
+Radius = 13.0
+GM = 1.201374
+
+[Mab]
+Radius = 12.0
+GM = 0.00066743
+
+[Cupid]
+Radius = 9.0
+GM = 0.0002536234
+
+[Triton]
+Radius = 1353.4
+GM = 1428.3002000000001
+
+[Nereid]
+Radius = 170.0
+GM = 2.00229
+
+[Naiad]
+Radius = 33.0
+GM = 0.0133486
+
+[Thalassa]
+Radius = 41.0
+GM = 0.0266972
+
+[Despina]
+Radius = 75.0
+GM = 0.133486
+
+[Galatea]
+Radius = 88.0
+GM = 0.133486
+
+[Larissa]
+Radius = 97.0
+GM = 0.333715
+
+[Proteus]
+Radius = 210.0
+GM = 3.33715
+
+[Halimede]
+Radius = 30.0
+GM = 0.0133486
+
+[Psamathe]
+Radius = 20.0
+GM = 0.00133486
+
+[Sao]
+Radius = 20.0
+GM = 0.0066743
+
+[Laomedeia]
+Radius = 20.0
+GM = 0.0066743
+
+[Neso]
+Radius = 30.0
+GM = 0.0066743
+
+[Charon]
+Radius = 606.0
+GM = 105.45394
+
+[Nix]
+Radius = 44.0
+GM = 0.003003435
+
+[Hydra]
+Radius = 36.0
+GM = 0.003203664
+
+[Namaka]
+Radius = 85.0
+GM = 0.11946997
+
+["Hiʻiaka"]
+Radius = 160.0
+GM = 1.1880254
+
+[Dysnomia]
+Radius = 350.0
+GM = 9.677735
+
+[Dia]
+Radius = 2.0
+GM = 6.00687e-06
+
+["S/2004 S 3"]
+Radius = 2.0
+GM = 0.0
+
+["S/2004 S 4"]
+Radius = 2.0
+GM = 0.0
+
+["S/2004 S 6"]
+Radius = 2.5
+GM = 0.0
+
+["S/2010 J 1"]
+Radius = 1.0
+GM = 0.0
+
+["S/2010 J 2"]
+Radius = 0.5
+GM = 0.0
+
+["1 Ceres"]
+Radius = 476.2
+GM = 62.69169990000001
+
+["6 Hebe"]
+Radius = 92.3
+GM = 0.4471781
+
+["47171 Lempo"]
+Radius = 197.0
+GM = 0.0
+
+["The Little Prince"]
+Radius = 13.0
+GM = 8.00916e-05
+
+["762 Pulcova"]
+Radius = 78.6
+GM = 0.17353179999999999
+
+["4179 Toutatis"]
+Radius = 0.0
+GM = 3.33715e-06
+
+["50000 Quaoar"]
+Radius = 675.0
+GM = 66.743
+
+["2867 Šteins"]
+Radius = 0.0
+GM = 0.0
+
+["136199 Eris"]
+Radius = 1163.0
+GM = 1107.9338
+
+["5 Astraea"]
+Radius = 59.5
+GM = 0.0800916
+
+["5145 Pholus"]
+Radius = 95.0
+GM = 0.5005725
+
+["4769 Castalia"]
+Radius = 0.0
+GM = 8.67659e-08
+
+[Remus]
+Radius = 7.0
+GM = 1.33486e-05
+
+["624 Hektor"]
+Radius = 0.0
+GM = 0.934402
+
+["216 Kleopatra"]
+Radius = 0.0
+GM = 0.200229
+
+["3753 Cruithne"]
+Radius = 2.5
+GM = 8.67659e-06
+
+["3 Juno"]
+Radius = 120.0
+GM = 1.8821526
+
+["10 Hygiea"]
+Radius = 203.6
+GM = 6.6743
+
+["21 Lutetia"]
+Radius = 42.5
+GM = 0.1134631
+
+["253 Mathilde"]
+Radius = 0.0
+GM = 0.006874529
+
+[Uranus]
+Radius = 25362.0
+GM = 5794140.0361
+
+["7 Iris"]
+Radius = 100.0
+GM = 0.5606412
+
+["433 Eros"]
+Radius = 0.0
+GM = 0.0004805496
+
+[Vanth]
+Radius = 434.0
+GM = 2.402748
+
+["90377 Sedna"]
+Radius = 497.0
+GM = 66.743
+
+["10199 Chariklo"]
+Radius = 248.0
+GM = 0.0
+
+["87 Sylvia"]
+Radius = 0.0
+GM = 0.98646154
+
+["(243) Ida I Dactyl"]
+Radius = 0.0
+GM = 0.0
+
+["90482 Orcus"]
+Radius = 473.0
+GM = 46.7201
+
+[Pluto]
+Radius = 1188.3
+GM = 869.6612899999999
+
+["5335 Damocles"]
+Radius = 5.0
+GM = 0.0
+
+[Romulus]
+Radius = 10.8
+GM = 0.0
+
+[Alexhelios]
+Radius = 6.9
+GM = 0.0
+
+[Cleoselene]
+Radius = 8.9
+GM = 0.0
+
+["8 Flora"]
+Radius = 67.7
+GM = 0.17353179999999999
+
+["2060 Chiron"]
+Radius = 83.0
+GM = 0.133486
+
+["5261 Eureka"]
+Radius = 1.2
+GM = 0.0
+
+["588 Achilles"]
+Radius = 67.8
+GM = 0.17353179999999999
+
+[Weywot]
+Radius = 170.0
+GM = 0.0
+
+["28978 Ixion"]
+Radius = 379.5
+GM = 15.350889999999998
+
+[Neptune]
+Radius = 24622.0
+GM = 6835350.859
+
+["Shoemaker-Levy 9"]
+Radius = 1.2
+GM = 0.0
+
+["9 Metis"]
+Radius = 0.0
+GM = 0.30701779999999995
+
+["136108 Haumea"]
+Radius = 0.0
+GM = 267.372458
+
+["7066 Nessus"]
+Radius = 0.0
+GM = 0.0
+
+["25143 Itokawa"]
+Radius = 0.0
+GM = 2.336005e-09
+
+["10370 Hylonome"]
+Radius = 70.0
+GM = 0.0
+
+["45 Eugenia"]
+Radius = 107.3
+GM = 0.41447403
+
+["(308933) 2006 SQ372"]
+Radius = 55.0
+GM = 0.0
+
+["2 Pallas"]
+Radius = 545.0
+GM = 14.082773
+
+["8405 Asbolus"]
+Radius = 33.0
+GM = 0.0
+
+["20000 Varuna"]
+Radius = 330.0
+GM = 10.345165
+
+["4 Vesta"]
+Radius = 265.0
+GM = 18.02061
+
+["243 Ida"]
+Radius = 0.0
+GM = 0.0066743
+
+["Comet Hyakutake"]
+Radius = 4.2
+GM = 0.0
+
+["951 Gaspra"]
+Radius = 0.0
+GM = 0.00066743
+
+["15760 Albion"]
+Radius = 60.0
+GM = 0.0600687
+
+["136472 Makemake"]
+Radius = 725.0
+GM = 293.66920000000005
+
+["Halley's Comet"]
+Radius = 15.0
+GM = 1.4683460000000002e-05
+
+[Jupiter]
+Radius = 69911.0
+GM = 126690895.17
+
+[Mars]
+Radius = 3389.5
+GM = 42829.784016
+
+[Mercury]
+Radius = 2439.4
+GM = 22032.798702
+
+[Saturn]
+Radius = 58232.0
+GM = 37932449.648
+
+[Sun]
+Radius = 695508.0
+GM = 132751827000.00002
+
+[Earth]
+Radius = 6371.0084
+GM = 398613.89090999996
+
+[Venus]
+Radius = 6051.8
+GM = 324869.55020999996
+
+[Kerberos]
+Radius = 25.0
+GM = 0.0010945852
+
+["S/2011 J 1"]
+Radius = 0.5
+GM = 0.0
+
+["S/2011 J 2"]
+Radius = 0.5
+GM = 0.0
+
+[Styx]
+Radius = 20.0
+GM = 0.0005005725
+
+[Hippocamp]
+Radius = 17.0
+GM = 0.00200229
+
+["S/2015 (136472) 1"]
+Radius = 75.0
+GM = 0.0
+
+["S/2017 J 1"]
+Radius = 2.0
+GM = 0.0
+
+["S/2016 J 1"]
+Radius = 0.5
+GM = 0.0
+
+[Valetudo]
+Radius = 0.5
+GM = 0.0
+
+["S/2017 J 2"]
+Radius = 1.0
+GM = 0.0
+
+["S/2017 J 3"]
+Radius = 1.0
+GM = 0.0
+
+[Pandia]
+Radius = 1.5
+GM = 0.0
+
+["S/2017 J 5"]
+Radius = 1.0
+GM = 0.0
+
+["S/2017 J 6"]
+Radius = 1.0
+GM = 0.0
+
+["S/2017 J 7"]
+Radius = 1.0
+GM = 0.0
+
+["S/2017 J 8"]
+Radius = 0.5
+GM = 0.0
+
+["S/2017 J 9"]
+Radius = 1.5
+GM = 0.0
+
+[Ersa]
+Radius = 1.5
+GM = 0.0
+
+[Arrokoth]
+Radius = 0.0
+GM = 0.0
+
+["101955 Bennu"]
+Radius = 250.0
+GM = 0.0
+
+[Angrboda]
+Radius = 1.5
+GM = 0.0
+
+["S/2004 S 21"]
+Radius = 1.5
+GM = 0.0
+
+[Gridr]
+Radius = 2.0
+GM = 0.0
+
+[Skrymir]
+Radius = 2.0
+GM = 0.0
+
+["S/2004 S 24"]
+Radius = 1.5
+GM = 0.0
+
+[Gerd]
+Radius = 1.5
+GM = 0.0
+
+["S/2004 S 26"]
+Radius = 2.0
+GM = 0.0
+
+[Eggther]
+Radius = 2.0
+GM = 0.0
+
+["S/2004 S 28"]
+Radius = 2.0
+GM = 0.0
+
+["S/2004 S 29"]
+Radius = 2.0
+GM = 0.0
+
+[Beli]
+Radius = 1.5
+GM = 0.0
+
+["S/2004 S 31"]
+Radius = 2.0
+GM = 0.0
+
+[Gunnlod]
+Radius = 2.0
+GM = 0.0
+
+[Thiazzi]
+Radius = 2.0
+GM = 0.0
+
+["S/2004 S 34"]
+Radius = 1.5
+GM = 0.0
+
+[Alvaldi]
+Radius = 2.0
+GM = 0.0
+
+["S/2004 S 36"]
+Radius = 1.5
+GM = 0.0
+
+["S/2004 S 37"]
+Radius = 2.0
+GM = 0.0
+
+[Geirrod]
+Radius = 2.0
+GM = 0.0
+
+["S/2004 S 39"]
+Radius = 1.0
+GM = 0.0
+
+["C/2020 F3 (NEOWISE)"]
+Radius = 0.0
+GM = 0.0
+
+["S/2004 S 41"]
+Radius = 2.0
+GM = 0.0
+
+["S/2003 J 24"]
+Radius = 0.0
+GM = 0.0
+
+["S/2004 S 40"]
+Radius = 1.0
+GM = 0.0
+
+["S/2004 S 42"]
+Radius = 2.0
+GM = 0.0
+
+["S/2004 S 43"]
+Radius = 2.0
+GM = 0.0
+
+["S/2004 S 44"]
+Radius = 2.5
+GM = 0.0
+
+["S/2004 S 45"]
+Radius = 2.0
+GM = 0.0
+
+["S/2004 S 46"]
+Radius = 1.5
+GM = 0.0
+
+["S/2004 S 47"]
+Radius = 2.0
+GM = 0.0
+
+["S/2004 S 48"]
+Radius = 2.0
+GM = 0.0
+
+["S/2004 S 49"]
+Radius = 2.0
+GM = 0.0
+
+["S/2004 S 50"]
+Radius = 1.5
+GM = 0.0
+
+["S/2004 S 51"]
+Radius = 2.0
+GM = 0.0
+
+["S/2004 S 52"]
+Radius = 1.5
+GM = 0.0
+
+["S/2004 S 53"]
+Radius = 2.0
+GM = 0.0
+
+["S/2005 S 4"]
+Radius = 2.5
+GM = 0.0
+
+["S/2005 S 5"]
+Radius = 1.5
+GM = 0.0
+
+["S/2006 S 10"]
+Radius = 1.5
+GM = 0.0
+
+["S/2006 S 11"]
+Radius = 1.5
+GM = 0.0
+
+["S/2006 S 12"]
+Radius = 2.0
+GM = 0.0
+
+["S/2006 S 13"]
+Radius = 2.0
+GM = 0.0
+
+["S/2006 S 14"]
+Radius = 1.5
+GM = 0.0
+
+["S/2006 S 15"]
+Radius = 2.0
+GM = 0.0
+
+["S/2006 S 16"]
+Radius = 1.5
+GM = 0.0
+
+["S/2006 S 17"]
+Radius = 2.0
+GM = 0.0
+
+["S/2006 S 18"]
+Radius = 2.0
+GM = 0.0
+
+["S/2006 S 19"]
+Radius = 2.0
+GM = 0.0
+
+["S/2006 S 20"]
+Radius = 2.5
+GM = 0.0
+
+["S/2007 S 5"]
+Radius = 2.0
+GM = 0.0
+
+["S/2007 S 6"]
+Radius = 1.5
+GM = 0.0
+
+["S/2007 S 7"]
+Radius = 2.0
+GM = 0.0
+
+["S/2007 S 8"]
+Radius = 2.0
+GM = 0.0
+
+["S/2007 S 9"]
+Radius = 2.0
+GM = 0.0
+
+["S/2019 S 1"]
+Radius = 3.0
+GM = 0.0
+
+["S/2019 S 10"]
+Radius = 1.5
+GM = 0.0
+
+["S/2019 S 11"]
+Radius = 2.0
+GM = 0.0
+
+["S/2019 S 12"]
+Radius = 2.0
+GM = 0.0
+
+["S/2019 S 13"]
+Radius = 1.5
+GM = 0.0
+
+["S/2019 S 14"]
+Radius = 2.0
+GM = 0.0
+
+["S/2019 S 15"]
+Radius = 1.5
+GM = 0.0
+
+["S/2019 S 16"]
+Radius = 1.5
+GM = 0.0
+
+["S/2019 S 17"]
+Radius = 2.0
+GM = 0.0
+
+["S/2019 S 18"]
+Radius = 1.5
+GM = 0.0
+
+["S/2019 S 19"]
+Radius = 1.5
+GM = 0.0
+
+["S/2019 S 2"]
+Radius = 3.0
+GM = 0.0
+
+["S/2019 S 20"]
+Radius = 3.0
+GM = 0.0
+
+["S/2019 S 21"]
+Radius = 2.0
+GM = 0.0
+
+["S/2019 S 3"]
+Radius = 2.0
+GM = 0.0
+
+["S/2019 S 4"]
+Radius = 1.5
+GM = 0.0
+
+["S/2019 S 5"]
+Radius = 1.5
+GM = 0.0
+
+["S/2019 S 6"]
+Radius = 2.0
+GM = 0.0
+
+["S/2019 S 7"]
+Radius = 2.0
+GM = 0.0
+
+["S/2019 S 8"]
+Radius = 2.0
+GM = 0.0
+
+["S/2019 S 9"]
+Radius = 2.0
+GM = 0.0
+
+["S/2020 S 1"]
+Radius = 2.0
+GM = 0.0
+
+["S/2020 S 10"]
+Radius = 1.5
+GM = 0.0
+
+["S/2020 S 2"]
+Radius = 1.5
+GM = 0.0
+
+["S/2020 S 3"]
+Radius = 1.5
+GM = 0.0
+
+["S/2020 S 4"]
+Radius = 1.5
+GM = 0.0
+
+["S/2020 S 5"]
+Radius = 1.5
+GM = 0.0
+
+["S/2020 S 6"]
+Radius = 1.5
+GM = 0.0
+
+["S/2020 S 7"]
+Radius = 1.5
+GM = 0.0
+
+["S/2020 S 8"]
+Radius = 1.5
+GM = 0.0
+
+["S/2020 S 9"]
+Radius = 2.0
+GM = 0.0
+
+["S/2006 S 9"]
+Radius = 3.0
+GM = 0.0
+
+["S/2011 J 3"]
+Radius = 1.5
+GM = 0.0
+
+["S/2016 J 3"]
+Radius = 1.0
+GM = 0.0
+
+["S/2016 J 4"]
+Radius = 1.0
+GM = 0.0
+
+["S/2018 J 2"]
+Radius = 1.5
+GM = 0.0
+
+["S/2018 J 3"]
+Radius = 1.0
+GM = 0.0
+
+["S/2018 J 4"]
+Radius = 1.0
+GM = 0.0
+
+["S/2021 J 1"]
+Radius = 1.0
+GM = 0.0
+
+["S/2021 J 2"]
+Radius = 1.0
+GM = 0.0
+
+["S/2021 J 3"]
+Radius = 2.0
+GM = 0.0
+
+["S/2021 J 4"]
+Radius = 1.0
+GM = 0.0
+
+["S/2021 J 5"]
+Radius = 1.0
+GM = 0.0
+
+["S/2021 J 6"]
+Radius = 1.0
+GM = 0.0
+
+["S/2022 J 1"]
+Radius = 1.0
+GM = 0.0
+
+["S/2022 J 2"]
+Radius = 1.0
+GM = 0.0
+
+["S/2022 J 3"]
+Radius = 1.0
+GM = 0.0
+
+["S/2023 U 1"]
+Radius = 0.0
+GM = 0.0
+
+["S/2017 J 11"]
+Radius = 0.0
+GM = 2.803206e-07
+
+["S/2005 U 1"]
+Radius = 0.0
+GM = 0.0
+
+["S/2021 N 1"]
+Radius = 0.0
+GM = 0.0
+
+["S/2002 N 5"]
+Radius = 0.0
+GM = 0.0
+
+["S/2017 J 10"]
+Radius = 0.0
+GM = 2.803206e-07
+
+["(162173) Ryugu"]
+Radius = 0.0
+GM = 0.0
+
+["S/2019 S 22"]
+Radius = 0.0
+GM = 0.0
+
+["S/2019 S 23"]
+Radius = 0.0
+GM = 0.0
+
+["S/2019 S 26"]
+Radius = 0.0
+GM = 0.0
+
+["S/2019 S 32"]
+Radius = 0.0
+GM = 0.0
+
+["S/2019 S 35"]
+Radius = 0.0
+GM = 0.0
+
+["S/2019 S 37"]
+Radius = 0.0
+GM = 0.0
+
+["S/2019 S 41"]
+Radius = 0.0
+GM = 0.0
+
+["S/2019 S 44"]
+Radius = 0.0
+GM = 0.0
+
+["S/2020 S 11"]
+Radius = 0.0
+GM = 0.0
+
+["S/2020 S 12"]
+Radius = 0.0
+GM = 0.0
+
+["S/2020 S 13"]
+Radius = 0.0
+GM = 0.0
+
+["S/2020 S 16"]
+Radius = 0.0
+GM = 0.0
+
+["S/2020 S 17"]
+Radius = 0.0
+GM = 0.0
+
+["S/2020 S 19"]
+Radius = 0.0
+GM = 0.0
+
+["S/2020 S 20"]
+Radius = 0.0
+GM = 0.0
+
+["S/2020 S 22"]
+Radius = 0.0
+GM = 0.0
+
+["S/2020 S 23"]
+Radius = 0.0
+GM = 0.0
+
+["S/2020 S 24"]
+Radius = 0.0
+GM = 0.0
+
+["S/2020 S 30"]
+Radius = 0.0
+GM = 0.0
+
+["S/2020 S 31"]
+Radius = 0.0
+GM = 0.0
+
+["S/2020 S 33"]
+Radius = 0.0
+GM = 0.0
+
+["S/2020 S 34"]
+Radius = 0.0
+GM = 0.0
+
+["S/2020 S 38"]
+Radius = 0.0
+GM = 0.0
+
+["S/2020 S 39"]
+Radius = 0.0
+GM = 0.0
+
+["S/2020 S 41"]
+Radius = 0.0
+GM = 0.0
+
+["S/2020 S 42"]
+Radius = 0.0
+GM = 0.0
+
+["S/2020 S 43"]
+Radius = 0.0
+GM = 0.0
+
+["S/2020 S 44"]
+Radius = 0.0
+GM = 0.0
+
+["S/2023 S 1"]
+Radius = 0.0
+GM = 0.0
+
+["S/2023 S 2"]
+Radius = 0.0
+GM = 0.0
+
+["S/2023 S 3"]
+Radius = 0.0
+GM = 0.0
+
+["S/2023 S 5"]
+Radius = 0.0
+GM = 0.0
+
+["S/2023 S 6"]
+Radius = 0.0
+GM = 0.0
+
+["S/2023 S 7"]
+Radius = 0.0
+GM = 0.0
+
+["S/2023 S 8"]
+Radius = 0.0
+GM = 0.0
+
+["S/2023 S 9"]
+Radius = 0.0
+GM = 0.0
+
+["S/2023 S 10"]
+Radius = 0.0
+GM = 0.0
+
+["S/2023 S 13"]
+Radius = 0.0
+GM = 0.0
+
+["S/2023 S 16"]
+Radius = 0.0
+GM = 0.0
+
+["S/2023 S 17"]
+Radius = 0.0
+GM = 0.0
+
+["S/2023 S 18"]
+Radius = 0.0
+GM = 0.0
+
+["S/2023 S 19"]
+Radius = 0.0
+GM = 0.0
+
+["S/2023 S 20"]
+Radius = 0.0
+GM = 0.0
+
+["S/2023 S 21"]
+Radius = 0.0
+GM = 0.0
+
+["S/2023 S 22"]
+Radius = 0.0
+GM = 0.0
+
+["S/2023 S 23"]
+Radius = 0.0
+GM = 0.0
+
+["S/2023 S 24"]
+Radius = 0.0
+GM = 0.0
+
+["S/2023 S 25"]
+Radius = 0.0
+GM = 0.0
+
+["S/2023 S 27"]
+Radius = 0.0
+GM = 0.0
+
+["S/2023 S 29"]
+Radius = 0.0
+GM = 0.0
+
+["S/2023 S 30"]
+Radius = 0.0
+GM = 0.0
+
+["S/2023 S 32"]
+Radius = 0.0
+GM = 0.0
+
+["S/2023 S 33"]
+Radius = 0.0
+GM = 0.0
+
+["S/2023 S 34"]
+Radius = 0.0
+GM = 0.0
+
+["S/2023 S 42"]
+Radius = 0.0
+GM = 0.0
+
+["S/2023 S 43"]
+Radius = 0.0
+GM = 0.0
+
+["S/2023 S 45"]
+Radius = 0.0
+GM = 0.0
+
+["S/2023 S 46"]
+Radius = 0.0
+GM = 0.0
+
+["S/2023 S 47"]
+Radius = 0.0
+GM = 0.0
+
+["S/2023 S 49"]
+Radius = 0.0
+GM = 0.0
+
+["S/2023 S 50"]
+Radius = 0.0
+GM = 0.0
+
+["S/2004 S 54"]
+Radius = 0.0
+GM = 0.0
+
+["S/2004 S 55"]
+Radius = 0.0
+GM = 0.0
+
+["S/2004 S 56"]
+Radius = 0.0
+GM = 0.0
+
+["S/2004 S 57"]
+Radius = 0.0
+GM = 0.0
+
+["S/2004 S 58"]
+Radius = 0.0
+GM = 0.0
+
+["S/2004 S 59"]
+Radius = 0.0
+GM = 0.0
+
+["S/2004 S 60"]
+Radius = 0.0
+GM = 0.0
+
+["S/2004 S 61"]
+Radius = 0.0
+GM = 0.0
+
+["S/2005 S 6"]
+Radius = 0.0
+GM = 0.0
+
+["S/2005 S 7"]
+Radius = 0.0
+GM = 0.0
+
+["S/2006 S 21"]
+Radius = 0.0
+GM = 0.0
+
+["S/2006 S 22"]
+Radius = 0.0
+GM = 0.0
+
+["S/2006 S 23"]
+Radius = 0.0
+GM = 0.0
+
+["S/2006 S 24"]
+Radius = 0.0
+GM = 0.0
+
+["S/2006 S 25"]
+Radius = 0.0
+GM = 0.0
+
+["S/2006 S 26"]
+Radius = 0.0
+GM = 0.0
+
+["S/2006 S 27"]
+Radius = 0.0
+GM = 0.0
+
+["S/2006 S 28"]
+Radius = 0.0
+GM = 0.0
+
+["S/2006 S 29"]
+Radius = 0.0
+GM = 0.0
+
+["S/2007 S 10"]
+Radius = 0.0
+GM = 0.0
+
+["S/2007 S 11"]
+Radius = 0.0
+GM = 0.0
+
+["S/2019 S 24"]
+Radius = 0.0
+GM = 0.0
+
+["S/2019 S 25"]
+Radius = 0.0
+GM = 0.0
+
+["S/2019 S 27"]
+Radius = 0.0
+GM = 0.0
+
+["S/2019 S 29"]
+Radius = 0.0
+GM = 0.0
+
+["S/2019 S 31"]
+Radius = 0.0
+GM = 0.0
+
+["S/2019 S 33"]
+Radius = 0.0
+GM = 0.0
+
+["S/2019 S 34"]
+Radius = 0.0
+GM = 0.0
+
+["S/2019 S 40"]
+Radius = 0.0
+GM = 0.0
+
+["S/2019 S 42"]
+Radius = 0.0
+GM = 0.0
+
+["S/2019 S 43"]
+Radius = 0.0
+GM = 0.0
+
+["S/2020 S 26"]
+Radius = 0.0
+GM = 0.0
+
+["S/2020 S 27"]
+Radius = 0.0
+GM = 0.0
+
+["S/2019 S 28"]
+Radius = 0.0
+GM = 0.0
+
+["S/2019 S 30"]
+Radius = 0.0
+GM = 0.0
+
+["S/2019 S 36"]
+Radius = 0.0
+GM = 0.0
+
+["S/2019 S 38"]
+Radius = 0.0
+GM = 0.0
+
+["S/2019 S 39"]
+Radius = 0.0
+GM = 0.0
+
+["S/2020 S 14"]
+Radius = 0.0
+GM = 0.0
+
+["S/2020 S 15"]
+Radius = 0.0
+GM = 0.0
+
+["S/2020 S 18"]
+Radius = 0.0
+GM = 0.0
+
+["S/2020 S 21"]
+Radius = 0.0
+GM = 0.0
+
+["S/2020 S 25"]
+Radius = 0.0
+GM = 0.0
+
+["S/2020 S 28"]
+Radius = 0.0
+GM = 0.0
+
+["S/2020 S 29"]
+Radius = 0.0
+GM = 0.0
+
+["S/2020 S 32"]
+Radius = 0.0
+GM = 0.0
+
+["S/2020 S 35"]
+Radius = 0.0
+GM = 0.0
+
+["S/2020 S 36"]
+Radius = 0.0
+GM = 0.0
+
+["S/2020 S 37"]
+Radius = 0.0
+GM = 0.0
+
+["S/2020 S 40"]
+Radius = 0.0
+GM = 0.0
+
+["S/2023 S 4"]
+Radius = 0.0
+GM = 0.0
+
+["S/2023 S 11"]
+Radius = 0.0
+GM = 0.0
+
+["S/2023 S 12"]
+Radius = 0.0
+GM = 0.0
+
+["S/2023 S 14"]
+Radius = 0.0
+GM = 0.0
+
+["S/2023 S 15"]
+Radius = 0.0
+GM = 0.0
+
+["S/2023 S 26"]
+Radius = 0.0
+GM = 0.0
+
+["S/2023 S 28"]
+Radius = 0.0
+GM = 0.0
+
+["S/2023 S 31"]
+Radius = 0.0
+GM = 0.0
+
+["S/2023 S 35"]
+Radius = 0.0
+GM = 0.0
+
+["S/2023 S 36"]
+Radius = 0.0
+GM = 0.0
+
+["S/2023 S 37"]
+Radius = 0.0
+GM = 0.0
+
+["S/2023 S 38"]
+Radius = 0.0
+GM = 0.0
+
+["S/2023 S 39"]
+Radius = 0.0
+GM = 0.0
+
+["S/2023 S 40"]
+Radius = 0.0
+GM = 0.0
+
+["S/2023 S 41"]
+Radius = 0.0
+GM = 0.0
+
+["S/2023 S 44"]
+Radius = 0.0
+GM = 0.0
+
+["S/2023 S 48"]
+Radius = 0.0
+GM = 0.0
+
+["(16) Psyche"]
+Radius = 0.0
+GM = 1.134631
+
+["Tempel 1"]
+Radius = 0.0
+GM = 0.0
+
+[""]
+Radius = 0.0
+GM = 6.6743e-07

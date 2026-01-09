@@ -2,22 +2,27 @@
 
 import json
 import os
+import re
+import tomllib
+from datetime import datetime
 from hashlib import sha1
 from io import StringIO
-from typing import Dict
+from typing import Any, Dict, List, Tuple, cast, get_args
 
 import numpy as np
 import requests
+import tomli_w
 
 from project.utils import Dir, FloatArray, T
-from project.utils.horizons.const import Body, HorizonsParams, bodies
-from project.utils.time import TimeConvert
+from project.utils.horizons.const import Body, HorizonsParams
+from project.utils.time_utils import TimeConvert
 
 
 class Horizons:
     """Horizons API class"""
 
     URL = "https://ssd.jpl.nasa.gov/api/horizons.api"
+    BodyNamesCache = Dir.horizons / "horizons__body_names.toml"
 
     @staticmethod
     def get(params: HorizonsParams) -> str:
@@ -34,8 +39,11 @@ class Horizons:
             Horizons data
         """
         # Create unique hash from parameters to identify cache
-        params_hash = sha1(repr(json.dumps(params, sort_keys=True)).encode())
-        cache_path = Dir.horizons / f"horizons_{params_hash.hexdigest()}.txt"
+        params_hash = sha1(
+            repr(json.dumps(params, sort_keys=True)).encode()
+        ).hexdigest()
+        print(params_hash)
+        cache_path = Dir.horizons / f"horizons_{params_hash}.txt"
 
         if os.path.exists(cache_path):
             # Horizons data already in cache
@@ -57,38 +65,37 @@ class Horizons:
         return out
 
     @staticmethod
-    def retrieve_pos(body_name: Body, time_jd: float) -> FloatArray:
-        """Retrieve body position in Geocentric inertial frame
+    def retrieve_body_year(body_name: Body, year: int) -> str:
+        """Retrieve body position in SSB (Solar System Barycenter) inertial frame
+        for an entire year, with 1 h sampling
 
         Parameters
         ----------
         body_name : Body
             Name of body (see Horizons API name scheme)
-        time_jd : float
-            JD for wanted time
+        year : int
+            Year
 
         Returns
         -------
-        A
-            Body position vector (3,)
+        str
+            Horizonss data
         """
-        data = Horizons.get(
+        return Horizons.get(
             params={
                 "format": "text",
                 "COMMAND": f"'{Horizons.body(body_name)}'",
                 "EPHEM_TYPE": "'VECTORS'",
-                "CENTER": "'500@399'",
+                "CENTER": "'500@0'",
                 "REF_PLANE": "'FRAME'",
-                "START_TIME": f"'{TimeConvert.cal2str(TimeConvert.jd2cal(time_jd))}'",
-                "STOP_TIME": f"'{TimeConvert.cal2str(TimeConvert.jd2cal(time_jd + T.s / T.d))}'",
-                "VEC_TABLE": "'1'",
+                "START_TIME": f"'{TimeConvert.cal2str((year, 1, 1, 0, 0, 0))}'",
+                "STOP_TIME": f"'{TimeConvert.cal2str((year, 12, 31, 23, 59, 59))}'",
+                "STEP_SIZE": "'1h'",
+                "VEC_TABLE": "'2'",
                 "CSV_FORMAT": "'YES'",
                 "VEC_LABELS": "'NO'",
             }
         )
-        csv_data = data.split("$$SOE")[1].split("$$EOE")[0]
-
-        return np.genfromtxt(StringIO(csv_data), delimiter=",", usecols=(2, 3, 4))
 
     @staticmethod
     def body(body_name: str) -> str:
@@ -109,12 +116,20 @@ class Horizons:
         ValueError
             If body not available in Horizons
         """
+        # Retrieve list of bodies from Horizons and cache it
+        if not Horizons.BodyNamesCache.exists():
+            with open(Horizons.BodyNamesCache, "wb") as f:
+                tomli_w.dump(Horizons.body_names(), f)
+
+        # Retrieve body ID
+        with open(Horizons.BodyNamesCache, "rb") as f:
+            bodies: Dict[str, str] = tomllib.load(f)
         if body_name not in bodies:
             raise ValueError("Body not present in Horizons System")
         return bodies[body_name]
 
     @staticmethod
-    def body_dict() -> Dict[str, str]:
+    def body_names() -> Dict[str, str]:
         """Retrieve dictionary of Horizons bodies and their IDs
 
         Returns
@@ -131,6 +146,162 @@ class Horizons:
         return out
 
 
+class HorizonsResponse:
+    re_mean_radius = r"(?i:mean\sradius).*?=\s*([0-9]+(?:\.[0-9]+)?)"
+    re_radius = r"(?i:radius).*?=\s*([0-9]+(?:\.[0-9]+)?)"
+    re_rad = r"(?i:rad).*?=\s*([0-9]+(?:\.[0-9]+)?)"
+    re_gm = r"GM.*?=\s*([0-9]+(?:\.[0-9]+)?)"
+    re_mass = r"(?i:mass).*?=\s*([0-9]+(?:\.[0-9]+)?)"
+
+    def __init__(self, text: str) -> None:
+        self.text = text
+
+
+class HorizonsBodyYear(HorizonsResponse):
+    def __init__(self, body_name: Body, year: int) -> None:
+        """Wrapper for Horizons response of single body single year
+
+        Parameters
+        ----------
+        body_name : Body
+            Name of body (see Horizons API name scheme)
+        year : int
+            Year of position
+        """
+        self.text = Horizons.retrieve_body_year(body_name=body_name, year=year)
+
+        self.name = body_name
+        self.year = year
+
+        data_str = self.text.split("$$SOE")[1].split("$$EOE")[0]
+        self.data = np.genfromtxt(
+            StringIO(data_str), delimiter=",", usecols=(2, 3, 4, 5, 6, 7)
+        )
+
+        self._radius: float | None = None
+        self._gm: float | None = None
+
+    def get_state(self, month: int = 1, day: int = 1) -> FloatArray:
+        """Retrieve body state in ICRF
+
+        Parameters
+        ----------
+        body_name : Body
+            Name of body (see Horizons API name scheme)
+        year : int
+            Year of position
+        month : int, optional
+            Month of position, by default January
+        day : int, optional
+            Day of position, by default the first of the month
+
+        Returns
+        -------
+        A
+            Body state vector (6,)
+        """
+        hours = (
+            datetime(self.year, month, day) - datetime(self.year, 1, 1)
+        ).total_seconds() / T.h
+
+        return self.data[int(hours), :] * 1e3
+
+    def get_pos(self, month: int = 1, day: int = 1) -> FloatArray:
+        """Retrieve body position in ICRF
+
+        Parameters
+        ----------
+        body_name : Body
+            Name of body (see Horizons API name scheme)
+        year : int
+            Year of position
+        month : int, optional
+            Month of position, by default January
+        day : int, optional
+            Day of position, by default the first of the month
+
+        Returns
+        -------
+        A
+            Body position vector (3,)
+        """
+        return self.get_state(month=month, day=day)[:3]
+
+    def get_vel(self, month: int = 1, day: int = 1) -> FloatArray:
+        """Retrieve body velocity in ICRF
+
+        Parameters
+        ----------
+        body_name : Body
+            Name of body (see Horizons API name scheme)
+        year : int
+            Year of velocity
+        month : int, optional
+            Month of velocity, by default January
+        day : int, optional
+            Day of velocity, by default the first of the month
+
+        Returns
+        -------
+        A
+            Body velocity vector (3,)
+        """
+        return self.get_state(month=month, day=day)[3:]
+
+    @property
+    def radius(self) -> float:
+        if self._radius is None:
+            radius_lst = re.findall(HorizonsResponse.re_mean_radius, self.text)
+            if len(radius_lst) == 0:
+                radius_lst = re.findall(HorizonsResponse.re_radius, self.text)
+            if len(radius_lst) == 0:
+                radius_lst = re.findall(HorizonsResponse.re_rad, self.text)
+            if len(radius_lst) == 0:
+                raise ValueError(f"Radius not found for {self.name}")
+            self._radius = float(radius_lst[0])
+        return self._radius * 1e3
+
+    @property
+    def gm(self) -> float:
+        if self._gm is None:
+            gm_lst = re.findall(HorizonsResponse.re_gm, self.text)
+            if len(gm_lst) == 0:
+                raise ValueError(f"GM not found for {self.name}")
+            self._gm = float(gm_lst[0])
+        return self._gm * 1e9
+
+
+def generate_sim_file(name: str, bodies: List[str], time: Tuple[int, int, int]) -> None:
+    out: Dict[str, Any] = {
+        "metadata": {
+            "epoch": f"{time[0]:04d}-{time[1]:02d}-{time[2]:02d} 00:00:00",
+            "target_count": len(bodies),
+        },
+        "body_list": [],
+    }
+    for body in bodies:
+        if body not in get_args(Body):
+            raise ValueError(f"{body} not available in Horizons")
+        hr = HorizonsBodyYear(body_name=cast(Body, body), year=time[0])
+        y0 = hr.get_state(time[1], time[2])
+
+        out["body_list"].append(
+            {
+                "name": body,
+                "mu": hr.gm,
+                "r_0": y0[:3].tolist(),
+                "v_0": y0[3:].tolist(),
+            }
+        )
+
+    with open(Dir.data / f"{name}.toml", "wb") as f:
+        tomli_w.dump(out, f)
+
+    print(f"{name}.toml")
+
+
 if __name__ == "__main__":
-    sun_p = Horizons.retrieve_pos("Sun", 2460903.5)
-    print(sun_p)
+    pass
+    # print(Horizons.body("SSB"))
+    # sun_p = Horizons.retrieve_pos("Sun", 2460903.5)
+    # print(sun_p)

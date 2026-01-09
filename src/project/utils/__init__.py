@@ -23,6 +23,14 @@ P = ParamSpec("P")
 
 
 @dataclass(frozen=True)
+class C:
+    """Universal constants"""
+
+    G = 6.67430e-11  # m3/kg/s2
+    G_KM = G * 1e-9
+
+
+@dataclass(frozen=True)
 class T:
     """Time in [s]"""
 
@@ -65,6 +73,10 @@ class Dir:
     simulation = cache / "simulation"
     horizons = cache / "horizons"
     test = cache / "test"
+    secret = root / ".secret"
+
+    # Files
+    api_keys = secret / "api-keys.toml"
 
 
 class ProgressTracker:

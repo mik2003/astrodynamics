@@ -186,3 +186,9 @@ profiling/profile_*.txt
 src/project/simulation/cpp_force_kernel/_runtime/
 *.prof
 prop.txt
+
+# Cache
+cache/
+
+# API
+.secret/
