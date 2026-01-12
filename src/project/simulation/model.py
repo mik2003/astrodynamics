@@ -1,27 +1,23 @@
-from typing import Any
+"""Force model kernels module"""
+
+from typing import List, cast
 
 import numba as nb
 import numpy as np
 
 from project.simulation.cpp_force_kernel import point_mass_cpp
-from project.utils import FloatArray
+from project.simulation.integrator import FunctionProtocol
+from project.utils import FloatArray, ProgressTracker
 
 
-class ForceKernel:
-    def __call__(
-        self, state: FloatArray, out: FloatArray, *args: Any, **kwargs: Any
-    ) -> None:
-        raise NotImplementedError
-
-
-class NumpyPointMass(ForceKernel):
+class NumpyPointMass(FunctionProtocol):
     def __call__(
         self, state: FloatArray, out: FloatArray, n: int, mu: FloatArray
     ) -> None:
         point_mass_numpy(state, n, mu, out)
 
 
-class NumbaPointMass(ForceKernel):
+class NumbaPointMass(FunctionProtocol):
     def __call__(
         self, state: FloatArray, out: FloatArray, n: int, mu: FloatArray
     ) -> None:
@@ -34,9 +30,68 @@ class NumbaPointMass(ForceKernel):
         stop_time: float,
         n: int,
         mu: FloatArray,
+        progress: bool = True,
+        print_step: int = 10_000,
     ) -> FloatArray:
         steps = int(stop_time / time_step) + 1
-        return _rk4_numba(state, time_step, steps, n, mu, np.empty_like(state))
+        state_buffer = np.empty_like(state)
+
+        if not progress:
+            return cast(
+                FloatArray, _rk4_numba(state, time_step, steps, n, mu, state_buffer)
+            )
+
+        pt = ProgressTracker(
+            n=steps, print_step=print_step, name="Integrating Numba RK4"
+        )
+
+        out: List[FloatArray] = []
+
+        progress_steps = steps // print_step
+        remainder = steps % print_step
+
+        for i in range(progress_steps):
+            # First batch (including all)
+            if i == 0:
+                out.append(
+                    _rk4_numba(state, time_step, print_step + 1, n, mu, state_buffer)
+                )
+            # Successive batches (not including first element)
+            else:
+                out.append(
+                    _rk4_numba(
+                        out[-1][-1, :], time_step, print_step + 1, n, mu, state_buffer
+                    )[1:, :]
+                )
+
+            pt.print(i=i * print_step)
+
+        # Last batch, only if remainder is not zero
+        if remainder > 0:
+            last = _rk4_numba(
+                out[-1][-1, :],
+                time_step,
+                remainder,
+                n,
+                mu,
+                state_buffer,
+            )
+
+            if remainder > 1:
+                out.append(last[1:, :])
+            else:
+                out.append(last)
+
+            pt.print(i=steps)
+
+        return np.vstack(out)
+
+
+class CPPPointMass(FunctionProtocol):
+    def __call__(
+        self, state: FloatArray, out: FloatArray, n: int, mu: FloatArray
+    ) -> None:
+        point_mass_cpp(state, mu, out)
 
 
 @nb.njit(fastmath=True, cache=True)
@@ -67,13 +122,6 @@ def _rk4_numba(
         y[i + 1] = y[i] + (time_step / 6.0) * (k1 + 2.0 * k2 + 2.0 * k3 + k4)
 
     return y
-
-
-class CPPPointMass(ForceKernel):
-    def __call__(
-        self, state: FloatArray, out: FloatArray, n: int, mu: FloatArray
-    ) -> None:
-        point_mass_cpp(state, mu, out)
 
 
 def point_mass_numpy(
