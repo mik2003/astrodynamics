@@ -68,8 +68,13 @@ class NumbaPointMass(FunctionProtocol):
 
         # Last batch, only if remainder is not zero
         if remainder > 0:
+            if progress_steps == 0:
+                last_state = state
+            else:
+                last_state = out[-1][-1, :]
+
             last = _rk4_numba(
-                out[-1][-1, :],
+                last_state,
                 time_step,
                 remainder,
                 n,
@@ -77,7 +82,7 @@ class NumbaPointMass(FunctionProtocol):
                 state_buffer,
             )
 
-            if remainder > 1:
+            if remainder > 1 and progress_steps != 0:
                 out.append(last[1:, :])
             else:
                 out.append(last)

@@ -156,11 +156,11 @@ if __name__ == "__main__":
 
     # Load simulation
     sim = Simulation(
-        name="solar_system_dwarf",
+        name="solar_system_moons",
         horizons=True,
         epoch=(2026, 1, 1),
-        dt=3600,
-        time=3600 * 24 * 365.25 * 1000,
+        dt=1,
+        time=3600 * 24 * 1,
     )
 
     mu_list = [body.mu for body in sim.body_list]
