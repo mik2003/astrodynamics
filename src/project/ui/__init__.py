@@ -2,6 +2,7 @@ import sys
 import time
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+from typing import Any, Tuple, cast
 
 import numpy as np
 import pygame
@@ -35,6 +36,41 @@ class VisualizationCache:
     rebuild_trail = True
     rebuild_relative_trail = True
     speed: float
+
+
+class Coord:
+    def __init__(self, x: float = 0, y: float = 0, z: float = 0) -> None:
+        self._x = x
+        self._y = y
+        self._z = z
+
+    def __mul__(self, value: Any) -> None:
+        if not isinstance(value, float):
+            raise NotImplementedError
+
+        self._x *= value
+        self._y *= value
+        self._z *= value
+
+    @property
+    def x(self) -> float:
+        return self._x
+
+    @property
+    def y(self) -> float:
+        return self._y
+
+    @property
+    def z(self) -> float:
+        return self._z
+
+    @property
+    def tuple2d(self) -> Tuple[float, float]:
+        return self._x, self._y
+
+    @property
+    def tuple3d(self) -> Tuple[float, float, float]:
+        return self._x, self._y, self._z
 
 
 class Visualization:
@@ -85,7 +121,7 @@ class Visualization:
     def place_info(self) -> None:
         self.info.y = VisC.info_display_y
 
-    def create_value_displays(self):
+    def create_value_displays(self) -> None:
         """Create value displays for parameters"""
         self.info.add_value_display(
             min_value=0,
@@ -136,7 +172,7 @@ class Visualization:
         self.place_info()
         self.info.toggle_show()
 
-    def update_parameters(self):
+    def update_parameters(self) -> None:
         """Update trail parameters from value displays"""
         trail_step_changed = False
         trail_time_changed = False
@@ -203,7 +239,7 @@ class Visualization:
             self.cache.rebuild_relative_trail = True
             self.cache.rebuild_trail = True
 
-    def reset_parameters(self):
+    def reset_parameters(self) -> None:
         """Reset parameters"""
         self.frame = 0
         self.state.scale = VisC.scale
@@ -345,7 +381,7 @@ class Visualization:
             self.cache.rebuild_relative_trail = True
             self.cache.rebuild_trail = True
 
-    def update_fullscreen(self):
+    def update_fullscreen(self) -> None:
         if self.state.fullscreen:
             if (self.screen.get_flags() & pygame.FULLSCREEN) == 0:
                 # Update dimensions to match fullscreen
@@ -366,7 +402,7 @@ class Visualization:
 
         self.cache.rebuild_trail = True
 
-    def update_info_display(self):
+    def update_info_display(self) -> None:
         """Update value display parameters from value displays"""
         for value_display in self.info.value_displays:
             if value_display.label == "Speed":
@@ -517,22 +553,13 @@ class Visualization:
     def draw_axes(self) -> None:
         # Draw axis system (X: red, Y: green, Z: blue)
         axis_length = 50 * self.state.scale  # world units, so it scales with zoom
-        axes = (
-            np.array(
-                [
-                    [1, 0, 0],  # X
-                    [0, 1, 0],  # Y
-                    [0, 0, 1],  # Z
-                ]
-            )
-            * axis_length
-        )
+        axes = [Coord(x=axis_length), Coord(y=axis_length), Coord(z=axis_length)]
         axis_colors = [(255, 0, 0), (0, 255, 0), (0, 128, 255)]
         axis_labels = ["X", "Y", "Z"]
         for i, axis in enumerate(axes):
-            axes_center = np.array([self.state.width - 100, self.state.height - 100, 0])
+            axes_center = Coord(self.state.width - 100, self.state.height - 100)
             end = self.scale_pos(axis, axes_center, self.state.scale)
-            start = (int(axes_center[0]), int(axes_center[1]))
+            start = axes_center.tuple2d
             pygame.draw.line(self.screen, axis_colors[i], start, end, 2)
             # Draw label at the end of each axis
             label_text = self.small_font.render(axis_labels[i], True, axis_colors[i])
@@ -598,19 +625,18 @@ class Visualization:
         result[:, 2, :] = 0  # Z (2D projection)
         return result.astype(int)
 
-    def scale_pos(self, pos, center, scale):
+    def scale_pos(self, pos: Coord, center: Coord, scale: float) -> Tuple[int, int]:
         # Apply Z rotation (in-plane)
-        x, y, z = pos[0], pos[1], pos[2] if len(pos) > 2 else 0
         cos_z = np.cos(self.state.rotation_z)
         sin_z = np.sin(self.state.rotation_z)
-        x_rot = x * cos_z - y * sin_z
-        y_rot = x * sin_z + y * cos_z
+        x_rot = pos.x * cos_z - pos.y * sin_z
+        y_rot = pos.x * sin_z + pos.y * cos_z
         # Apply X rotation (tilt)
         cos_x = np.cos(self.state.rotation_x)
         sin_x = np.sin(self.state.rotation_x)
-        y_tilt = y_rot * cos_x - z * sin_x
+        y_tilt = y_rot * cos_x - pos.z * sin_x
         # z_tilt = y_rot * sin_x + z * cos_x  # not used for 2D
-        return int(center[0] + x_rot / scale), int(center[1] - y_tilt / scale)
+        return int(center.x + x_rot / scale), int(center.y - y_tilt / scale)
 
     def update_relative_trail_cache(self) -> None:
         """Update the relative trail cache with new positions."""
@@ -773,4 +799,4 @@ class Visualization:
             & (y_coords <= self.state.height)
         )
 
-        return np.any(on_screen, axis=0)
+        return cast(FloatArray, np.any(on_screen, axis=0))

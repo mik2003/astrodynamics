@@ -393,11 +393,11 @@ class Slider:
             value - (VisC.slider_handle_height - VisC.slider_height) // 2
         )
 
-    def update_handle_position(self):
+    def update_handle_position(self) -> None:
         relative_val = (self.val - self.min_value) / (self.max_value - self.min_value)
         self.handle_rect.centerx = int(self.rect.left + relative_val * self.rect.width)
 
-    def draw(self, screen):
+    def draw(self, screen: pygame.Surface) -> None:
         # Draw slider track
         pygame.draw.rect(screen, (100, 100, 100), self.rect)
         pygame.draw.rect(screen, (200, 200, 200), self.rect, 2)
@@ -434,7 +434,7 @@ class Slider:
         return False
 
 
-def main():
+def main() -> None:
     # Initialize pygame
     pygame.init()
     screen_width, screen_height = 800, 600
