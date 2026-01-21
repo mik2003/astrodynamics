@@ -1,3 +1,5 @@
+# type: ignore
+
 # project/fictional_solar_system.py
 
 import json
