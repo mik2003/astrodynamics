@@ -340,6 +340,11 @@ class Visualization:
                     self.state.scale /= 1.05
                 elif event.y < 0:
                     self.state.scale *= 1.05
+                if event.x < 0:
+                    self.state.speed /= 1.05
+                elif event.x > 0:
+                    self.state.speed *= 1.05
+                self.update_info_display()
                 self.cache.rebuild_trail = True
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_F11:
