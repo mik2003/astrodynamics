@@ -90,8 +90,8 @@ class CircularTrailBuffer:
     def add_points(self, points: FloatArray) -> None:
         n = points.shape[0]
         print(f"n: {n}")
-        self[-n:, :, :] = points
         self._advance(n)
+        self[-n:, :, :] = points
 
     @property
     def indices(self) -> IntArray:
