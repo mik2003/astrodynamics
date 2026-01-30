@@ -2,7 +2,7 @@ import sys
 import time
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Any, Tuple, cast
+from typing import Any, Tuple
 
 import numpy as np
 import pygame
@@ -10,32 +10,96 @@ import pygame
 from project.simulation import Simulation
 from project.ui.constants import VisC
 from project.ui.elements import InfoDisplay
-from project.utils import FloatArray, T, ValueUnitToStr
+from project.utils import FloatArray, Index, IntArray, T, ValueUnitToStr
 
 
-@dataclass
-class VisualizationState:
-    running = True
-    fullscreen = False
-    paused = False
+class CircularTrailBuffer:
+    def __init__(self, array: FloatArray, head: int = 0) -> None:
+        self._array = array
+        self._head = head
+        self._len: int = array.shape[0]
 
-    width = 800  # [px]
-    height = 600  # [px]
-    scale = 1e9  # [m/px]
-    trail_step_time = 1.0  # [s]
-    trail_length_time = 1.0  # [s]
-    speed = T.d  # Playback speed [s/s]
-    rotation_z = 0.0  # Rotation in-plane [rad]
-    rotation_x = 0.0  # Rotation out-of-plane [rad]
+    def __getitem__(self, key: Index | Tuple[Index, ...]) -> FloatArray:
+        if not isinstance(key, tuple) or len(key) != 3:
+            raise IndexError("Expected (index_or_slice, :, :) indexing")
 
+        first, a1, a2 = key
 
-class VisualizationCache:
-    trail: FloatArray
-    relative_trail: FloatArray
-    trail_frame: int = 0  # frames from last trail point
-    rebuild_trail = True
-    rebuild_relative_trail = True
-    speed: float
+        if isinstance(first, int):
+            return self._array[(self._head + first) % self._len, a1, a2]
+
+        elif isinstance(first, slice):
+            start, stop, step = first.indices(self._len)
+            if step != 1:
+                raise NotImplementedError("Step != 1 not supported")
+            length = stop - start
+            phys_start = (self._head + start) % self._len
+            phys_stop = (phys_start + length) % self._len
+            if phys_start < phys_stop:
+                return self._array[phys_start:phys_stop, a1, a2]
+            else:
+                return np.concatenate(
+                    (self._array[phys_start:, a1, a2], self._array[:phys_stop, a1, a2]),
+                    axis=0,
+                )
+
+        raise IndexError("Invalid key")
+
+    def __setitem__(self, key: Index | Tuple[Index, ...], value: FloatArray) -> None:
+        if not isinstance(key, tuple) or len(key) != 3:
+            raise IndexError("Expected (index_or_slice, :, :) indexing")
+
+        first, a1, a2 = key
+
+        if isinstance(first, int):
+            self._array[(self._head + first) % self._len, a1, a2] = value
+            return
+
+        elif isinstance(first, slice):
+            start, stop, step = first.indices(self._len)
+            if step != 1:
+                raise NotImplementedError("Step != 1 not supported")
+            length = stop - start
+            if value.shape[0] != length:
+                raise ValueError("Value length mismatch")
+            phys_start = (self._head + start) % self._len
+            phys_stop = (phys_start + length) % self._len
+            if phys_start < phys_stop:
+                self._array[phys_start:phys_stop, a1, a2] = value
+            else:
+                first_len = self._len - phys_start
+                self._array[phys_start:, a1, a2] = value[:first_len]
+                self._array[:phys_stop, a1, a2] = value[first_len:]
+
+            return
+
+        raise IndexError("Invalid key")
+
+    def __sub__(self, other: Any) -> "CircularTrailBuffer":
+        if not isinstance(other, CircularTrailBuffer):
+            raise NotImplementedError
+
+        self._array = self._array - other._array
+
+        return self
+
+    def _advance(self, n: int) -> None:
+        self._head = (self._head + n) % self._len
+        print(self._head)
+
+    def add_points(self, points: FloatArray) -> None:
+        n = points.shape[0]
+        print(f"n: {n}")
+        self[-n:, :, :] = points
+        self._advance(n)
+
+    @property
+    def indices(self) -> IntArray:
+        return (np.arange(self._len) + self._head) % self._len
+
+    @property
+    def len(self) -> int:
+        return self._len
 
 
 class Coord:
@@ -73,6 +137,32 @@ class Coord:
         return self._x, self._y, self._z
 
 
+@dataclass
+class VisualizationState:
+    running = True
+    fullscreen = False
+    paused = False
+
+    width = 800  # [px]
+    height = 600  # [px]
+    scale = 1e9  # [m/px]
+    trail_step_time = 1.0  # [s]
+    trail_length_time = 1.0  # [s]
+    speed = T.d  # Playback speed [s/s]
+    rotation_z = 0.0  # Rotation in-plane [rad]
+    rotation_x = 0.0  # Rotation out-of-plane [rad]
+
+
+class VisualizationCache:
+    trail: CircularTrailBuffer
+    relative_trail: CircularTrailBuffer
+    trail_visible: FloatArray
+    trail_frame: int = 0  # frames from last trail point
+    rebuild_trail = True
+    rebuild_relative_trail = True
+    speed: float
+
+
 class Visualization:
     def __init__(
         self,
@@ -88,6 +178,7 @@ class Visualization:
         self.trail_step = self.calculate_trail_step()
         self.trail_length = self.calculate_trail_length()
         self._trail_points_to_add = 0
+        self.trail_length_changed = True
 
         self.screen_info: pygame.display._VidInfo
 
@@ -236,8 +327,9 @@ class Visualization:
         if trail_step_changed or trail_time_changed:
             self.trail_step = self.calculate_trail_step()
             self.trail_length = self.calculate_trail_length()
-            self.cache.rebuild_relative_trail = True
-            self.cache.rebuild_trail = True
+            self.trail_length_changed = True
+            # self.cache.rebuild_relative_trail = True
+            # self.cache.rebuild_trail = True
 
     def reset_parameters(self) -> None:
         """Reset parameters"""
@@ -383,8 +475,8 @@ class Visualization:
 
         if info_changed:
             self.update_parameters()
-            self.cache.rebuild_relative_trail = True
-            self.cache.rebuild_trail = True
+            # self.cache.rebuild_relative_trail = True
+            # self.cache.rebuild_trail = True
 
     def update_fullscreen(self) -> None:
         if self.state.fullscreen:
@@ -469,6 +561,8 @@ class Visualization:
         self.update_trail()
 
     def update_trail(self) -> None:
+        if self.trail_length_changed:
+            self.build_trail_cache()
         if self.cache.rebuild_relative_trail:
             self.rebuild_relative_trail_cache()
         else:
@@ -493,34 +587,33 @@ class Visualization:
         pygame.display.flip()
 
     def draw_bodies(self) -> None:
-        screen_pos = self.cache.trail[-1, :, :]
-        draw_flag = self.is_on_screen()
-
         for i in range(self.sim.num_bodies):
+            if not self.cache.trail_visible[i]:
+                continue
+
             color = VisC.colors[i % len(VisC.colors)]
 
-            # Only draw if the body is on screen
-            screen_pos_i = list(screen_pos[:2, i])
-            if draw_flag[i]:
-                if self.cache.trail.shape[0] > 1:
-                    lines_list = list(map(tuple, self.cache.trail[:, 0:2, i]))
-                    pygame.draw.aalines(self.screen, color, False, lines_list, 1)
-                # Draw current position
-                actual_radius = self.sim.body_list[i].radius
-                actual_radius = actual_radius if actual_radius is not None else 0.0
-                radius = max(
-                    3,
-                    int(actual_radius / self.state.scale),
+            if self.cache.trail.len > 1:
+                pts = self.cache.trail[:, :2, i].T
+                points = pts.astype(int).T.tolist()
+                pygame.draw.aalines(self.screen, color, False, points, 1)
+            # Draw current position
+            actual_radius = self.sim.body_list[i].radius
+            actual_radius = actual_radius if actual_radius is not None else 0.0
+            radius = max(
+                3,
+                int(actual_radius / self.state.scale),
+            )
+            screen_pos_i = self.cache.trail[-1, :2, i].tolist()
+            pygame.draw.circle(self.screen, color, screen_pos_i, radius)
+            if self.sim.body_list[i].name and self.ui_visible:
+                text = self.small_font.render(
+                    self.sim.body_list[i].name, True, VisC.white
                 )
-                pygame.draw.circle(self.screen, color, screen_pos_i, radius)
-                if self.sim.body_list[i].name and self.ui_visible:
-                    text = self.small_font.render(
-                        self.sim.body_list[i].name, True, VisC.white
-                    )
-                    self.screen.blit(
-                        text,
-                        (screen_pos_i[0] + 12 + radius, screen_pos_i[1] - 10),
-                    )
+                self.screen.blit(
+                    text,
+                    (screen_pos_i[0] + 12 + radius, screen_pos_i[1] - 10),
+                )
 
     def draw_time(self) -> None:
         t = self.frame * self.sim.dt
@@ -643,6 +736,12 @@ class Visualization:
         # z_tilt = y_rot * sin_x + z * cos_x  # not used for 2D
         return int(center.x + x_rot / scale), int(center.y - y_tilt / scale)
 
+    def build_trail_cache(self) -> None:
+        """Allocate trail cache and build"""
+        self.rebuild_relative_trail_cache()
+        self.rebuild_trail_cache()
+        self.trail_length_changed = False
+
     def update_relative_trail_cache(self) -> None:
         """Update the relative trail cache with new positions."""
 
@@ -655,6 +754,7 @@ class Visualization:
             # Replace entire cache
             self.rebuild_relative_trail_cache()
             return
+
         if trail_points_to_add > 0:
             # Get the positions to add (from the simulation data)
             start_frame = self.frame - self.cache.trail_frame
@@ -675,13 +775,8 @@ class Visualization:
                     ]
                     positions_to_add = positions_to_add - focus_positions
 
-                # Roll the cache and add new positions
-                self.cache.relative_trail = np.roll(
-                    self.cache.relative_trail, -trail_points_to_add, axis=0
-                )
-                self.cache.relative_trail[-trail_points_to_add:, :, :] = (
-                    positions_to_add
-                )
+                # Add new positions
+                self.cache.relative_trail.add_points(positions_to_add)
 
         # Always update the very latest position
         current_pos = self.sim.mm.r_vis[self.frame, :]
@@ -725,11 +820,8 @@ class Visualization:
             # Scale positions for display
             scaled_positions = self.scale_pos_array(positions_to_update)
 
-            # Roll and update
-            self.cache.trail = np.roll(
-                self.cache.trail, -trail_points_to_update, axis=0
-            )
-            self.cache.trail[-trail_points_to_update:, :, :] = scaled_positions
+            # Add new positions
+            self.cache.trail.add_points(scaled_positions)
 
         # Always update the current position
         current_relative_pos = self.cache.relative_trail[-1, :, :][np.newaxis, :, :]
@@ -765,7 +857,7 @@ class Visualization:
             axis=0,
         )
 
-        self.cache.relative_trail = np.roll(new_cache, -1, axis=0)
+        self.cache.relative_trail = CircularTrailBuffer(np.roll(new_cache, -1, axis=0))
 
         # Always update the very latest position
         current_pos = self.sim.mm.r_vis[self.frame, :]
@@ -781,7 +873,7 @@ class Visualization:
 
     def rebuild_trail_cache(self) -> None:
         new_cache = np.empty((self.trail_length, 3, self.sim.num_bodies))
-        current_pos = self.cache.relative_trail
+        current_pos = self.cache.relative_trail[:, :, :]
         if self.focus_body_idx is not None:
             pos_diff = current_pos[-1, :, self.focus_body_idx][
                 np.newaxis, :, np.newaxis
@@ -790,18 +882,20 @@ class Visualization:
 
         scaled_pos = self.scale_pos_array(current_pos)
         new_cache[:, :, :] = scaled_pos
-        self.cache.trail = new_cache
+        self.cache.trail = CircularTrailBuffer(new_cache)
         self.cache.rebuild_trail = False
 
-    def is_on_screen(self) -> FloatArray:
-        x_coords = self.cache.trail[:, 0, :]
-        y_coords = self.cache.trail[:, 1, :]
+        self.update_trail_visibility()
 
-        on_screen = (
-            (x_coords >= 0)
-            & (x_coords <= self.state.width)
-            & (y_coords >= 0)
-            & (y_coords <= self.state.height)
+    def update_trail_visibility(self) -> None:
+        trail = self.cache.trail  # (T, 2, N)
+
+        x = trail[:, 0, :]
+        y = trail[:, 1, :]
+
+        visible = (
+            (x >= 0) & (x <= self.state.width) & (y >= 0) & (y <= self.state.height)
         )
 
-        return cast(FloatArray, np.any(on_screen, axis=0))
+        # Any point of the trail on screen
+        self.cache.trail_visible = np.any(visible, axis=0)
