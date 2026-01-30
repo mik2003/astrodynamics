@@ -83,8 +83,8 @@ class Visualization:
 
         self.sim = sim
 
-        self.state.trail_step_time = self.sim.dt
-        self.state.trail_length_time = self.sim.dt  # Begin with no trail
+        self.state.trail_step_time = VisC.trail_step_time
+        self.state.trail_length_time = VisC.trail_length_time
         self.trail_step = self.calculate_trail_step()
         self.trail_length = self.calculate_trail_length()
         self._trail_points_to_add = 0

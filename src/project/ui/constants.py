@@ -14,9 +14,9 @@ class VisC:
     width = 800  # [px]
     height = 600  # [px]
     scale = 1e9  # [m/px]
-    trail_step_time = T.d  # [s]
-    trail_length_time = T.a  # [s]
-    speed = 1.0  # Playback speed [days/s]
+    trail_step_time = T.h  # [s]
+    trail_length_time = 10 * T.a  # [s]
+    speed = 100.0  # Playback speed [days/s]
     rotation_z = 0.0  # Rotation in-plane [rad]
     rotation_x = 0.0  # Rotation out-of-plane [rad]
 
