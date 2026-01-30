@@ -85,11 +85,9 @@ class CircularTrailBuffer:
 
     def _advance(self, n: int) -> None:
         self._head = (self._head + n) % self._len
-        print(self._head)
 
     def add_points(self, points: FloatArray) -> None:
         n = points.shape[0]
-        print(f"n: {n}")
         self._advance(n)
         self[-n:, :, :] = points
 
@@ -362,10 +360,10 @@ class Visualization:
 
     def start(self) -> None:
         pygame.init()
+        self.screen_info = pygame.display.Info()
         self.screen = pygame.display.set_mode(
             (self.state.width, self.state.height), pygame.RESIZABLE
         )
-        self.screen_info = pygame.display.Info()
         pygame.display.set_caption("Astrodynamics Simulation")
         self.clock = pygame.time.Clock()
 
@@ -451,6 +449,28 @@ class Visualization:
                     self.ui_visible = not self.ui_visible
                 if event.key == pygame.K_SPACE:
                     self.pause()
+
+                if event.key == pygame.K_e:
+                    if self.focus_body_idx is None:
+                        self.focus_body_idx = 0
+                    elif self.focus_body_idx < self.sim.num_bodies - 1:
+                        self.focus_body_idx += 1
+                    else:
+                        self.focus_body_idx = None
+                    self.cache.rebuild_trail = True
+                if event.key == pygame.K_q:
+                    if self.focus_body_idx is None:
+                        self.focus_body_idx = self.sim.num_bodies - 1
+                    elif self.focus_body_idx > 0:
+                        self.focus_body_idx -= 1
+                    else:
+                        self.focus_body_idx = None
+                    self.cache.rebuild_trail = True
+                if event.key == pygame.K_RETURN:
+                    self.trail_focus_body_idx = self.focus_body_idx
+                    self.cache.rebuild_relative_trail = True
+                    self.cache.rebuild_trail = True
+
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 mouse_x, mouse_y = event.pos
                 # body_clicked = False
