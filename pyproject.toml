@@ -85,7 +85,7 @@ name = "project"
 description = "An astrodynamics library for simulation and visualization"
 dynamic = ["version"]
 readme = "README.md"
-license = { file = "LICENSE" }
+license = "AGPL-3.0-or-later AND CC0-1.0"
 authors = [{ name = "Michelangelo Secondo" }]
 requires-python = ">=3.10,<3.14"
 dependencies = [
