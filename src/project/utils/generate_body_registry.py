@@ -166,12 +166,14 @@ def emit_registry_py(
 ) -> None:
     lines: list[str] = []
 
+    # REUSE-IgnoreStart
     lines.append(
         "# SPDX-FileCopyrightText: © 2026 Michelangelo Secondo "
         + "<michelangelo@secondo.aero>\n"
     )
     lines.append("#\n")
     lines.append("# SPDX-License-Identifier: AGPL-3.0-or-later\n\n")
+    # REUSE-IgnoreEnd
 
     lines.append("# AUTO-GENERATED — DO NOT EDIT\n")
     lines.append("from dataclasses import dataclass\n")

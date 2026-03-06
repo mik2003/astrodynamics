@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Michelangelo Secondo <michelangelo@secondo.aero>
+#
+# SPDX-License-Identifier: CC0-1.0
+
 [Moon]
 Radius = 1737.0
 GM = 4902.94078

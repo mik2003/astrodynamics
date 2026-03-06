@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Michelangelo Secondo <michelangelo@secondo.aero>
+#
+# SPDX-License-Identifier: CC0-1.0
+
 cmake_minimum_required(VERSION 3.10)
 project(_cpp_force_kernel LANGUAGES CXX)
 

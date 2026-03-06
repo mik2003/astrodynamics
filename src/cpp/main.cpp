@@ -1,3 +1,9 @@
+/*
+ * SPDX-FileCopyrightText: 2026 Michelangelo Secondo <michelangelo@secondo.aero>
+ *
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ */
+
 #define FORCE_IMPORT_ARRAY
 
 #include <pybind11/numpy.h>

@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Michelangelo Secondo <michelangelo@secondo.aero>
+#
+# SPDX-License-Identifier: CC0-1.0
+
 [metadata]
 epoch = "2026-01-01 00:00:00"
 target_count = 10

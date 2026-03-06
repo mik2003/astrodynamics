@@ -1,3 +1,7 @@
+REM SPDX-FileCopyrightText: 2026 Michelangelo Secondo <michelangelo@secondo.aero>
+REM
+REM SPDX-License-Identifier: CC0-1.0
+
 @echo off
 cd /d "%~dp0"
 

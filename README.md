@@ -1,3 +1,9 @@
+<!--
+SPDX-FileCopyrightText: 2026 Michelangelo Secondo <michelangelo@secondo.aero>
+
+SPDX-License-Identifier: AGPL-3.0-or-later
+-->
+
 # Astrodynamics
 
 A small but structured Python package for **orbital dynamics simulation**, **ephemeris handling**, and **trajectory visualization**, intended for scientific, educational, and prototyping use.

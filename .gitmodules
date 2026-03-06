@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: NONE
+#
+# SPDX-License-Identifier: CC0-1.0
+
 [submodule "src/cpp/include/xtensor"]
 	path = src/cpp/include/xtensor
 	url = https://github.com/xtensor-stack/xtensor.git
