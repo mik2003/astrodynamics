@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: © 2026 Michelangelo Secondo <michelangelo@secondo.aero>
+#
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 # AUTO-GENERATED — DO NOT EDIT
 from dataclasses import dataclass
 from enum import Enum
@@ -234,10 +238,12 @@ class BodyID(str, Enum):
     WEYWOT = "Weywot"
     YMIR = "Ymir"
 
+
 @dataclass(frozen=True)
 class BodyInfo:
     horizons_id: str
     systeme_solaire_name: str
+
 
 BODY_REGISTRY = {
     BodyID.N_1_CERES: BodyInfo("20000001", "1 Ceres"),

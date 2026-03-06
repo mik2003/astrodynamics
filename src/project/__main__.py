@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: © 2026 Michelangelo Secondo <michelangelo@secondo.aero>
+#
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 from project.simulation import Simulation
 from project.ui import Visualization
 

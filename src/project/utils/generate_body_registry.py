@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: © 2026 Michelangelo Secondo <michelangelo@secondo.aero>
+#
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 import json
 import tomllib
 from dataclasses import dataclass
@@ -161,6 +165,13 @@ def emit_registry_py(
     out_path: Path,
 ) -> None:
     lines: list[str] = []
+
+    lines.append(
+        "# SPDX-FileCopyrightText: © 2026 Michelangelo Secondo "
+        + "<michelangelo@secondo.aero>\n"
+    )
+    lines.append("#\n")
+    lines.append("# SPDX-License-Identifier: AGPL-3.0-or-later\n\n")
 
     lines.append("# AUTO-GENERATED — DO NOT EDIT\n")
     lines.append("from dataclasses import dataclass\n")

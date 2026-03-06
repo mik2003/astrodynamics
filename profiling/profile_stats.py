@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: © 2026 Michelangelo Secondo <michelangelo@secondo.aero>
+#
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """profiling.profile_stats
 
 Compact viewer for cProfile pstats files. Designed to be run as:
@@ -30,7 +34,7 @@ def main(
         p = pstats.Stats(file)
     except FileNotFoundError:
         raise SystemExit(
-            f"Profile file '{file}' not found. Create it with:\n  py -m cProfile -o {os.path.join('profiling','profile.bin')} -m project"
+            f"Profile file '{file}' not found. Create it with:\n  py -m cProfile -o {os.path.join('profiling', 'profile.bin')} -m project"
         )
 
     unit_multipliers = {"s": 1.0, "ms": 1e3, "us": 1e6, "ns": 1e9}
@@ -63,7 +67,7 @@ def main(
     if keyfn is not None:
         items.sort(key=keyfn, reverse=True)
 
-    header = f"{'ncalls':>10} {'tottime':>{10+precision}} {'percall':>{10+precision}} {'cumtime':>{10+precision}} {'percall':>{10+precision}}  location"
+    header = f"{'ncalls':>10} {'tottime':>{10 + precision}} {'percall':>{10 + precision}} {'cumtime':>{10 + precision}} {'percall':>{10 + precision}}  location"
     print(header)
     print("-" * (len(header) + 20))
 
@@ -76,10 +80,10 @@ def main(
 
         print(
             f"{str(cc) + ('/' + str(nc) if nc != cc else ''):>10} "
-            f"{fmt.format(tottime*mul):>{10+precision}} "
-            f"{fmt.format(per_self*mul):>{10+precision}} "
-            f"{fmt.format(cumtime*mul):>{10+precision}} "
-            f"{fmt.format(per_cum*mul):>{10+precision}}  {func[0]}:{func[1]}({func[2]})"
+            f"{fmt.format(tottime * mul):>{10 + precision}} "
+            f"{fmt.format(per_self * mul):>{10 + precision}} "
+            f"{fmt.format(cumtime * mul):>{10 + precision}} "
+            f"{fmt.format(per_cum * mul):>{10 + precision}}  {func[0]}:{func[1]}({func[2]})"
         )
 
     if dump:

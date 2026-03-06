@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: © 2026 Michelangelo Secondo <michelangelo@secondo.aero>
+#
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 import struct
 from io import BufferedReader, BufferedWriter
 from pathlib import Path
