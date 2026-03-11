@@ -4,6 +4,8 @@ SPDX-FileCopyrightText: 2026 Michelangelo Secondo <michelangelo AT secondo DOT a
 SPDX-License-Identifier: AGPL-3.0-or-later
 -->
 
+**NOTE**: Repository is archived and moved to ![codeberg](https://codeberg.org/mik2003/astrodynamics)
+
 # Astrodynamics
 
 A small but structured Python package for **orbital dynamics simulation**, **ephemeris handling**, and **trajectory visualization**, intended for scientific, educational, and prototyping use.
