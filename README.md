@@ -5,7 +5,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 -->
 
 > [!NOTE]
-> Repository is archived and moved to ![codeberg](https://codeberg.org/mik2003/astrodynamics)
+> Repository is archived and moved to [codeberg](https://codeberg.org/mik2003/astrodynamics)
 
 # Astrodynamics
 
