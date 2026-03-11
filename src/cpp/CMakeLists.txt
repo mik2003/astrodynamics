@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2026 Michelangelo Secondo <michelangelo@secondo.aero>
+# SPDX-FileCopyrightText: 2026 Michelangelo Secondo <michelangelo AT secondo DOT aero>
 #
 # SPDX-License-Identifier: CC0-1.0
 

@@ -1,4 +1,4 @@
-REM SPDX-FileCopyrightText: 2026 Michelangelo Secondo <michelangelo@secondo.aero>
+REM SPDX-FileCopyrightText: 2026 Michelangelo Secondo <michelangelo AT secondo DOT aero>
 REM
 REM SPDX-License-Identifier: CC0-1.0
 

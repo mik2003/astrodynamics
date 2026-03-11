@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: © 2026 Michelangelo Secondo <michelangelo@secondo.aero>
+# SPDX-FileCopyrightText: © 2026 Michelangelo Secondo <michelangelo AT secondo DOT aero>
 #
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -169,7 +169,7 @@ def emit_registry_py(
     # REUSE-IgnoreStart
     lines.append(
         "# SPDX-FileCopyrightText: © 2026 Michelangelo Secondo "
-        + "<michelangelo@secondo.aero>\n"
+        + "<michelangelo AT secondo DOT aero>\n"
     )
     lines.append("#\n")
     lines.append("# SPDX-License-Identifier: AGPL-3.0-or-later\n\n")
